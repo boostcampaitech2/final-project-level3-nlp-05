@@ -28,17 +28,10 @@ class BartSummaryModel(BartForConditionalGeneration):
         self,
         input_ids=None,
         attention_mask=None,
-        bos_positions=None,
-        decoder_input_ids=None,      # used for teacher-forcing
-        decoder_attention_mask=None, # also used for teacher-forcing
-        head_mask=None,              
-        decoder_head_mask=None,      
+        head_mask=None,
         encoder_outputs=None,
-        past_key_values=None,
         inputs_embeds=None,
-        decoder_inputs_embeds=None,
         labels=None,
-        use_cache=None,
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
@@ -62,8 +55,9 @@ class BartSummaryModel(BartForConditionalGeneration):
         logits = logits.squeeze(-1) # shape: [B, L]
 
         mask = torch.ones_like(logits)
-        if bos_positions is not None:
-            for i, pos in enumerate(bos_positions):
+        # TODO: fix errors when creating answer matrix
+        if labels is not None:
+            for i, pos in enumerate(labels):
                 mask[i].index_fill_(0, pos, 0)
         else:
             mask = mask.masked_fill(input_ids == self.config.bos_token_id, 0)
