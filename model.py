@@ -9,7 +9,7 @@ class BartSummaryModel(BartForConditionalGeneration):
     """This original implementation uses Bart's encoder for sentence-level classification task.
     However, there exist several problems including
         1. It only uses the features extracted from the encoder layer. 
-            The assumption behind this dicission was the encoder is in charge of embedding input sentences, 
+            The assumption behind this decision was the encoder is in charge of embedding input sentences, 
             while the decoder is taking care of generating sentences conditioned on encoder's final hidden states. 
             However, compared to encoder-only models such as BERT and RoBERTa, the BART base model actually lacks 6 encoders, 
             and 6 transformer architectures are used in the decoder. Therefore, in order to fully utilize
