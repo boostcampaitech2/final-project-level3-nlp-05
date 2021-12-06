@@ -13,13 +13,12 @@ class BartSummaryModel(BartForConditionalGeneration):
             while the decoder is taking care of generating sentences conditioned on encoder's final hidden states. 
             However, compared to encoder-only models such as BERT and RoBERTa, the BART base model actually lacks 6 encoders, 
             and 6 transformer architectures are used in the decoder. Therefore, in order to fully utilize
-            the language-modeling potentials of BART model, we decided to use both the encoder and the decoder.
+            the language-modeling potentials of a BART model, we decided to use both the encoder and the decoder.
         
         2. BCELoss value is too high. It is mainly because the loss is calculated using full-size matrices and
-            aggreated using summation (calculating mean is not feasible here).
-            In other words, although elements unrelated for sentence-level classification task 
-            of the output logit matrix are masked with `-1e9` (minus infinity) and
-            relavent elements whose corresponding inputs are `<bos>` (or `<eos>`) tokens only remain in the matrix,
+            aggreated using summation (calculating mean is not feasible because it reduces the loss significantly due to many zeros).
+            In other words, although elements unrelated for sentence-level classification task of the output logit matrix are masked with `-1e9` (minus infinity) 
+            and relavent elements whose corresponding inputs are `<bos>` (or `<eos>`) tokens only remain in the matrix,
             small amount of positive errors might cause undesirable behaviours. Also, the calculation overload exists. 
             It is better to use `torch.gather` function to selectively choose logits which correspond to `<bos>` (or `<eos>`) tokens.
 
