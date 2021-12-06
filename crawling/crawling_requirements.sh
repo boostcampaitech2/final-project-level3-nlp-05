@@ -17,3 +17,5 @@ google-chrome --version
 pip install xlrd 
 apt-get install xvfb
 pip install pyvirtualdisplay 
+pip install webdriver_manager
+pip install tqdm

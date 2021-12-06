@@ -64,3 +64,43 @@ sh ./crawling_requirements.sh
 
 # nate_crawling.py
 - terminal 출력
+
+# daum_news_title_crawling.py
+
+- 
+
+```
+{
+  "date": "20211205",
+  "category": "국제",
+  "articles": [
+      {
+        'id': '015_08',
+        'title': '헝다 \'디폴트\' 가능성 시사..中 "개별 사건" 파장 최소화 주력', 
+        'url': 'https://v.daum.net/v/20211205151346812',
+      },
+      {
+        'id': '015_09', 
+        'title': '백건우 "삶을 얼마나 깊이 깨달았느냐에 따라 음악도 깊어져"', 
+        'url': 'https://v.daum.net/v/20211205151104773',
+      },
+  ]
+}
+```
+
+# daum_news_crawling.py
+
+```
+{
+    "id": "353465974", 
+    "category": "종합", 
+    "publish_date": "2019-07-22 00:00:00", 
+    "extractive": [0],
+    "abstractive": ["요약 문장1","요약 문장2"],
+    "title": "충주시, 민간지원 보조사업 대형축제 운영 감사 돌입", 
+    "article": [
+        {"index": 0, "sentence": "보조금 집행 위법행위·지적사례 늘어"}, 
+        {"index": 1, "sentence": "특별감사반, 2017~2018년 축제 점검"},
+    ]
+}
+```
