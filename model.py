@@ -100,6 +100,7 @@ class BartSummaryModel(BartForConditionalGeneration):
 class BartSummaryModelV2(BartForConditionalGeneration):
     def __init__(self, config: BartConfig, **kwargs):
         super(BartSummaryModelV2, self).__init__(config, **kwargs)
+        # TODO: eos 토큰 수 (=문장 개수) config.num_labels에 고정하기
         self.classification_head = BartClassificationHead(
             config.d_model,
             config.d_model,
@@ -117,12 +118,11 @@ class BartSummaryModelV2(BartForConditionalGeneration):
         decoder_attention_mask=None,
         head_mask=None,
         decoder_head_mask=None,
-        cross_attn_head_mask=None,
+        # cross_attn_head_mask=None,
         encoder_outputs=None,
         inputs_embeds=None,
         decoder_inputs_embeds=None,
-        labels=None, # TODO: torch.LongTensor 
-                     # 내부적으로 우리가 [2, 1, 4] -> [0, 1, 1, 0, 1, 0, 0, 0] == [0.2, 0.8, 0.7, 0.3, 0.2, 0.4, 0.7, 0.6]
+        labels=None,
         use_cache=None,
         output_attentions=None,
         output_hidden_states=None,
@@ -144,7 +144,7 @@ class BartSummaryModelV2(BartForConditionalGeneration):
             decoder_attention_mask=decoder_attention_mask,
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
-            cross_attn_head_mask=cross_attn_head_mask,
+            # cross_attn_head_mask=cross_attn_head_mask,  # only if v4.6.0 or above
             encoder_outputs=encoder_outputs,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
@@ -165,12 +165,20 @@ class BartSummaryModelV2(BartForConditionalGeneration):
             :, -1, :
         ]
         logits = self.classification_head(sentence_representation)
-
+        
         loss = None
         if labels is not None:
-            # TODO: labels one-hot encoding tensor 만들기!
+            assert len(input_ids) == len(labels)
+            _labels = torch.zeros_like(input_ids, dtype=torch.long)
+            for i in range(len(labels)):
+                for j in labels[i]:
+                    if j >= 0:
+                        _labels[i][j] = 1
+            labels = _labels.clone()
+
             loss_fct = nn.BCEWithLogitsLoss()
             loss = loss_fct(logits, labels)
+    
         if not return_dict:
             output = (logits,) + outputs[1:]
             return ((loss,) + output) if loss is not None else output
