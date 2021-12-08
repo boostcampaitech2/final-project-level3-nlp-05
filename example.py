@@ -30,16 +30,19 @@ print("Model initialized")
 print("*" * 10 + "\n")
 
 inputs = [
-    ["안녕하세요, 반갑습니다 여러분!", "제 이름은 도비입니다.", "이거레알의 노예죠."],
-    ["여러분 저는 부산으로 떠납니다.", "다음주 목요일은 부산에서 뵈어요~", "신난다!", "이게 재밌냐?"],
+    ["과거를 떠올려보자.", "방송을 보던 우리의 모습을.", "독보적인 매체는 TV였다."],
+    ["온 가족이 둘러앉아 TV를 봤다.", "간혹 가족들끼리 뉴스와 드라마, 예능 프로그램을 둘러싸고 리모컨 쟁탈전이 벌어지기도 했다.", "각자 선호하는 프로그램을 ‘본방’으로 보기 위한 싸움이었다.", "TV가 한 대인지 두 대인지 여부도 그래서 중요했다."],
+    ["지금은 어떤가.", "‘안방극장’이라는 말은 옛말이 됐다.", "TV가 없는 집도 많다.", "미디어의 혜택을 누릴 수 있는 방법은 늘어났다.", "각자의 방에서 각자의 휴대폰으로, 노트북으로, 태블릿으로 콘텐츠를 즐긴다."]
 ]
 answers = [
     [0, 2],
     [1],
+    [0, 3, 4]
 ]
 targets = [
-    "안녕하세요, 그리고 안녕히계세요 여러분!",
-    "다음주 목요일에 부산에서 만나요!"
+    "과거에 독보적인 매체는 TV였다.",
+    "온 가족이 각자 선호하는 프로그램을 보기 위해 리모컨 쟁탈전이 일어났다.",
+    "지금은 TV말고도 미디어의 혜택을 누릴 수 있는 방법들이 많아졌다."
 ]
 
 print("\n" + "*" * 10)
@@ -126,7 +129,7 @@ print("*" * 10 + "\n")
 # generate summaries
 model.eval()
 print("model in eval mode (deactivating dropout)")
-summary_ids = model.generate(input_ids=input_ids, attention_mask=attention_mask, num_beams=16, max_length=64, min_length=16)
+summary_ids = model.generate(input_ids=input_ids, attention_mask=attention_mask, num_beams=8, max_length=48, min_length=16)
 print(summary_ids)
 
 print("\n" + "*" * 10)
