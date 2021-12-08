@@ -219,26 +219,27 @@ class BartSummaryModelV2(BartForConditionalGeneration):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
+        
+        device = input_ids.device
+        B = input_ids.size(0)
+        MAX_NUM = torch.max(input_ids.eq(self.config.eos_token_id).sum(1))
+
         hidden_states = outputs[0]  # last hidden state
-
-        # TODO: 원하는 정보를 뽑아내기
-        eos_mask = input_ids.eq(self.config.eos_token_id)
-
-        if len(torch.unique_consecutive(eos_mask.sum(1))) > 1:
-            # https://pytorch.org/docs/stable/generated/torch.unique_consecutive.html
-            raise ValueError("All examples must have the same number of <eos> tokens.")
-        sentence_representation = hidden_states[eos_mask, :].view(hidden_states.size(0), -1, hidden_states.size(-1))[:, -1, :]
-        logits = self.classification_head(sentence_representation)
+        sentence_representation = torch.zeros((B, MAX_NUM, self.config.d_model)).to(device)
+        for i in range(B):
+            _hidden = hidden_states[i][input_ids[i].eq(self.config.eos_token_id)]
+            for j in range(_hidden.size(0)):
+                sentence_representation[i, j, :] = _hidden[j, :]
+        logits = self.classification_head(sentence_representation).squeeze(-1)
         
         loss = None
         if labels is not None:
             assert len(input_ids) == len(labels)
-            _labels = torch.zeros_like(input_ids, dtype=torch.long)
-            for i in range(len(labels)):
-                for j in labels[i]:
-                    if j >= 0:
-                        _labels[i][j] = 1
-            labels = _labels.clone()
+            # Create one-hot vectors indicating target sentences
+            one_hot = torch.zeros((B, MAX_NUM)).to(device)
+            for i in range(one_hot.size(0)):
+                one_hot[i,:].index_fill_(0, labels[i][labels[i] >= 0], 1.0)
+            labels = one_hot.clone()
 
             loss_fct = nn.BCEWithLogitsLoss()
             loss = loss_fct(logits, labels)
@@ -246,8 +247,7 @@ class BartSummaryModelV2(BartForConditionalGeneration):
         if not return_dict:
             output = (logits,) + outputs[1:]
             return ((loss,) + output) if loss is not None else output
-
-        # TODO: Output class 만들기!
+        
         return SentenceClassifierOutput(
             loss=loss,
             logits=logits,
