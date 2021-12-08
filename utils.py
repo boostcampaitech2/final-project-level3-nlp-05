@@ -1,5 +1,6 @@
 from collections import defaultdict
 from typing import List, Dict
+import timeit
 
 import torch
 
@@ -24,3 +25,23 @@ def collate_fn(
         outputs[key] = torch.nn.utils.rnn.pad_sequence(outputs[key], padding_value=PAD, batch_first=True)
     
     return dict(outputs)
+
+class PrintInfo:
+    
+    def __init__(self):
+
+        self.time_step = timeit.default_timer()
+        self.accumulation = 0
+    
+    def SECTION(self, section: str, simple: bool = False):
+        
+        if not simple: print("\n" + "*" * 10)
+        print("{} // before_step: {}ms // total: {}s".format(section, round(self._reset_time()), round(self.accumulation, 2)))
+        if not simple: print("*" * 10 + "\n")
+
+    def _reset_time(self):
+        temp = self.time_step
+        self.time_step = timeit.default_timer()
+        diff = self.time_step - temp
+        self.accumulation += diff
+        return diff * 1000
