@@ -48,7 +48,7 @@ class CrawlingDaumNews:
         for article in tqdm(title_data['articles'], total=len(title_data['articles'])):
             info = self._get_article(category, article["url"])
             json_result.append(info)
-
+            
         with open(f"daum_articles_{date}_{category}.json", "w", encoding="utf-8") as f:
             json.dump(json_result, f, ensure_ascii=False)
 
@@ -70,6 +70,7 @@ class CrawlingDaumNews:
         abstractive = bsObject.select('.summary_view')
         abstractive = abstractive[0].get_text(strip=True, separator="\n").splitlines() if abstractive else []
         article = [p.text for p in bsObject.select('#harmonyContainer > section p') if p.text != '']
+        article = self._corpus_to_sentence(article)
         article = [{'index': idx, 'sentence': sentence} for idx, sentence in enumerate(article)]
         date = bsObject.select('.info_view .num_date')[0].text
         date_lst = date.replace('. ','-').split("-")
@@ -85,13 +86,22 @@ class CrawlingDaumNews:
 
         return info
 
+    def _corpus_to_sentence(self,article):
+        splited_article = []
+        for corpus in article:
+            sentences = corpus.split(". ")
+            for sentence in sentences:
+                if sentence:
+                    new_sentence = sentence + "." if sentence[-1] != "." and sentence[-1] == "다" else sentence
+                    splited_article.append(new_sentence)
+        return splited_article
+
 def main():
     date = "20211205"
     category = "IT"
     
     crawling_obj = CrawlingDaumNews()
     crawling_obj.generate_article_json(date=date, category=category)
-
 
 if __name__ == "__main__":
     main()
