@@ -10,7 +10,7 @@ from transformers import BartTokenizerFast
 from transformers.models.bart.configuration_bart import BartConfig
 
 from model import BartSummaryModelV2
-from utils import collate_fn, PrintInfo
+from utils import collate_fn, freeze, unfreeze_all, PrintInfo
 
 helper = PrintInfo()
 
@@ -21,6 +21,9 @@ MODEL_NAME = "gogamza/kobart-summarization"
 config = BartConfig.from_pretrained(MODEL_NAME)
 tokenizer = BartTokenizerFast.from_pretrained(MODEL_NAME)
 model = BartSummaryModelV2.from_pretrained(MODEL_NAME)
+
+print(config)
+print(tokenizer.special_tokens_map)
 
 helper.SECTION("Input preview")
 
@@ -79,9 +82,13 @@ model.train()
 
 print("<< model in train mode (activating dropout) >>")
 print(model)
+print()
+
+print("<< frozen layers >>")
+# print(freeze(model, ["model"]))
 
 original_embedding = model.model.shared.weight.clone().detach().cpu().numpy()
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5, weight_decay=1e-2)
 
 NUM_STEPS = 8
 
@@ -125,7 +132,7 @@ for step in range(NUM_STEPS):
 
     helper.SECTION("Abstractive Summary - Backward", simple=step != 0)
 
-    gen_out.loss.backward()
+    # gen_out.loss.backward()
     print("back-propagation completed...")
 
     helper.SECTION("Updating weights", simple=step != 0)
@@ -138,9 +145,18 @@ for step in range(NUM_STEPS):
 
     with torch.no_grad():
         print("model in eval mode (deactivating dropout)")
+        ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask)
+        if step == 0 or step == NUM_STEPS - 1:
+            print(torch.argsort(ext_out.logits, dim=-1, descending=True))
+            print(answers)
+            # TODO: argsort한 결과 null input의 logit보다 낮은 문장은 제거하는 것이 필요
+            # TODO: top-k 구현
+            # TODO: logit(또는 prob) threshould 구현
+
         summary_ids = model.generate(input_ids=input_ids, attention_mask=attention_mask, num_beams=8, max_length=48, min_length=4)
-        if step == 0:
+        if step == 0 or step == NUM_STEPS - 1:
             print(summary_ids)
+            print(labels)
 
         helper.SECTION("Final decoded results")
 

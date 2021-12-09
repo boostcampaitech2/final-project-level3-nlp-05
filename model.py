@@ -220,7 +220,7 @@ class BartSummaryModelV2(BartForConditionalGeneration):
             return_dict=return_dict,
         )
         
-        device = input_ids.device
+        device = self.model.device
         B = input_ids.size(0)
         MAX_NUM = torch.max(input_ids.eq(self.config.eos_token_id).sum(1))
 
