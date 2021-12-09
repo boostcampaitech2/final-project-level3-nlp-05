@@ -38,7 +38,7 @@ def freeze(
         name (str or List[str])
         exact (bool): (default: False)
     Returns:
-        List[str] - list of frozen layers
+        List[str] - list of frozen layers including previously frozen ones.
     """
     def _freeze_exact(model, name):
         for n, p in model.named_parameters():
