@@ -1,8 +1,9 @@
 from collections import defaultdict
-from typing import List, Dict
+from typing import Union, List, Dict, NoReturn
 import timeit
 
 import torch
+import torch.nn as nn
 
 def collate_fn(
     batched_samples: List[Dict[str, List[int]]],
@@ -25,6 +26,44 @@ def collate_fn(
         outputs[key] = torch.nn.utils.rnn.pad_sequence(outputs[key], padding_value=PAD, batch_first=True)
     
     return dict(outputs)
+
+def freeze(
+    model: nn.Module,
+    name: Union[str, List[str]],
+    exact: bool = False,
+) -> List[str]:
+    """Freeze layers whose names correspond to the `name` parameter given.
+    Args:
+        model (nn.Module)
+        name (str or List[str])
+        exact (bool): (default: False)
+    Returns:
+        List[str] - list of frozen layers
+    """
+    def _freeze_exact(model, name):
+        for n, p in model.named_parameters():
+            if n == name:
+                p.requires_grad = False
+    
+    def _freeze(model, name):
+        for n, p in model.named_parameters():
+            if n.count(name):
+                p.requires_grad = False
+    
+    if not isinstance(name, list):
+        name = [name]
+
+    for n in name:
+        if exact:
+            _freeze_exact(model, n)
+        else:
+            _freeze(model, n)
+
+    return [n for n, p in model.named_parameters() if not p.requires_grad]
+
+def unfreeze_all(model: nn.Module) -> NoReturn:
+    for p in model.parameters():
+        p.requires_grad = True
 
 class PrintInfo:
     
