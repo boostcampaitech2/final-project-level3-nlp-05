@@ -2,32 +2,25 @@ import json
 
 import torch
 from torch.utils.data import Dataset
+import pyarrow.parquet as pq
 
-from transformers import PreTrainedTokenizerFast
+from transformers import PreTrainedTokenizerFast, BartTokenizerFast
 
 class SummaryDataset(Dataset):
-    def __init__(self, path: str, tokenizer: PreTrainedTokenizerFast, max_seq_len: int = 1024):
-        self.path = path
+    def __init__(self, parquet_path: str, tokenizer: BartTokenizerFast, max_seq_len: int = 1024):
+        self.path = parquet_path
         self.tokenizer = tokenizer
         self.max_seq_len = max_seq_len
 
-        with open(path, "r") as json_files:
-            json_list = list(json_files)
-
-        raw_data = []
-        for json_str in json_list:
-            result = json.loads(json_str)
-            raw_data.append(result)
-
-        self.raw_data = raw_data
+        self.raw_data = pq.read_table(parquet_path)
 
     def __len__(self):
         return len(self.raw_data)
 
     def __getitem__(self, idx):
-        input_sentences = self.raw_data[idx]["article_original"]
-        target_sentence = self.raw_data[idx]["abstractive"]
-        target_ids = self.raw_data[idx]["extractive"]
+        input_sentences = self.raw_data["text"][idx].as_py()
+        target_sentence = self.raw_data["abstractive"][idx][0].as_py()
+        target_ids = self.raw_data["extractive"][idx].as_py()
 
         input_ids = []
         bos_positions = []
@@ -58,5 +51,4 @@ class SummaryDataset(Dataset):
         }
 
     def get_df(self):
-        import pandas as pd
-        return pd.DataFrame(self.raw_data)
+        return self.raw_data.to_pandas()
