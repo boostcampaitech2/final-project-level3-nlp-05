@@ -18,8 +18,6 @@ def collate_fn(
     for key in keys:
         for sample in batched_samples:
             outputs[key].append(torch.tensor(sample[key]))
-        
-        # TODO: label 이름을 무엇으로 할 것인가..
         PAD = pad_token_idx if key in pad_keys else 0
         PAD = -1 if key == "answers" else PAD
         

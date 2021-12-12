@@ -22,32 +22,30 @@ class SummaryDataset(Dataset):
         target_sentence = self.raw_data["abstractive"][idx][0].as_py()
         target_ids = self.raw_data["extractive"][idx].as_py()
 
-        input_ids = []
-        bos_positions = []
+        input_ids = [self.tokenizer.bos_token_id]
 
         for sentence in input_sentences:
-            bos_positions.append(len(input_ids))
-            input_ids.append(self.tokenizer.bos_token_id)
+            # input_ids.append(self.tokenizer.bos_token_id)
             input_ids.extend(self.tokenizer.encode(sentence))
-        input_ids.append(self.tokenizer.eos_token_id)
+            input_ids.append(self.tokenizer.eos_token_id)
 
-        # TODO: trunctation
         attention_mask = None
+        target_ids = torch.tensor(target_ids, dtype=torch.long)
         if len(input_ids) > self.max_seq_len:
-            input_ids = input_ids[:-1] + [self.tokenizer.eos_token_id]
-            attention_mask = [1] * self.max_seq_len
+            input_ids = input_ids[:self.max_seq_len-1] + [self.tokenizer.eos_token_id]
+            attention_mask = [1.] * self.max_seq_len
+            num_eos = input_ids.count(self.tokenizer.eos_token_id)
+            target_ids = target_ids[target_ids < num_eos]
         else:
-            attention_mask = [1] * len(input_ids)
+            attention_mask = [1.] * len(input_ids)
 
-        answer_positions = [bos_positions[i] for i in target_ids if bos_positions[i] < self.max_seq_len]
         labels = [self.tokenizer.bos_token_id] + self.tokenizer.encode(target_sentence) + [self.tokenizer.eos_token_id]
 
         return {
             "input_ids": torch.tensor(input_ids),
             "attention_mask": torch.tensor(attention_mask),
-            "labels": torch.tensor(labels),
-            "bos_positions": torch.tensor(bos_positions),
-            "answer_positions": torch.tensor(answer_positions),
+            "answers": target_ids,
+            "labels": torch.tensor(labels)
         }
 
     def get_df(self):

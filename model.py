@@ -166,7 +166,6 @@ class BartSummaryModel(BartForConditionalGeneration):
 class BartSummaryModelV2(BartForConditionalGeneration):
     def __init__(self, config: BartConfig, **kwargs):
         super(BartSummaryModelV2, self).__init__(config, **kwargs)
-        # TODO: eos 토큰 수 (=문장 개수) config.num_labels에 고정하기
         self.classification_head = BartClassificationHead(
             input_dim=config.d_model,
             inner_dim=config.d_model,
@@ -184,7 +183,7 @@ class BartSummaryModelV2(BartForConditionalGeneration):
         decoder_attention_mask=None,
         head_mask=None,
         decoder_head_mask=None,
-        # cross_attn_head_mask=None,
+        cross_attn_head_mask=None,
         encoder_outputs=None,
         inputs_embeds=None,
         decoder_inputs_embeds=None,
@@ -210,7 +209,7 @@ class BartSummaryModelV2(BartForConditionalGeneration):
             decoder_attention_mask=decoder_attention_mask,
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
-            # cross_attn_head_mask=cross_attn_head_mask,  # only if v4.6.0 or above
+            cross_attn_head_mask=cross_attn_head_mask,
             encoder_outputs=encoder_outputs,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
