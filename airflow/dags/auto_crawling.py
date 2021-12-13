@@ -1,14 +1,15 @@
 from datetime import datetime
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python import PythonOperator
 from airflow.utils.dates import days_ago
 import time
 
+args = {'owner': 'admin', 'start_date': days_ago(n=1)}
 dag = DAG(
-    'dagflow',  # DAG id
-    start_date=days_ago(n=1),  # 언제부터 DAG이 시작되는가
-    schedule_interval='0/1 * * * * ?',  # 10시와 16시에 하루 두 번 실행
-    catchup=False)
+    dag_id='dagflow',  # DAG id
+    default_args=args,
+    schedule_interval='* * * * *',
+)
 
 def prt1():
     print('print1---start')
@@ -23,10 +24,10 @@ def prt2():
 
 t1 = PythonOperator(task_id='task_1',
                     python_callable=prt1,
-                    provide_context=True,
+                    depends_on_past=True,
                     dag=dag)
 t2 = PythonOperator(task_id='task_2',
                     python_callable=prt2,
-                    provide_context=True,
+                    depends_on_past=True,
                     dag=dag)
 t1 >> t2
