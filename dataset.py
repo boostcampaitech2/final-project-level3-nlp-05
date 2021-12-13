@@ -25,11 +25,16 @@ class SummaryDataset(Dataset):
         input_ids = [self.tokenizer.bos_token_id]
 
         for sentence in input_sentences:
-            # input_ids.append(self.tokenizer.bos_token_id)
             input_ids.extend(self.tokenizer.encode(sentence))
             input_ids.append(self.tokenizer.eos_token_id)
 
         attention_mask = None
+
+        if target_ids is not None:
+            for i in range(len(target_ids)):
+                if not isinstance(target_ids[i], int):  # such as None
+                    target_ids[i] = -1  # same as PAD in collate_fn
+
         target_ids = torch.tensor(target_ids, dtype=torch.long)
         if len(input_ids) > self.max_seq_len:
             input_ids = input_ids[:self.max_seq_len-1] + [self.tokenizer.eos_token_id]
