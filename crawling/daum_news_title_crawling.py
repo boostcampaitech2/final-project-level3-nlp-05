@@ -1,3 +1,5 @@
+import argparse
+from datetime import date, timedelta
 import json
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
@@ -37,7 +39,6 @@ class CrawlingDaumNewsTitle:
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
-
         driver = webdriver.Chrome('./chromedriver', chrome_options=chrome_options)
         return driver
 
@@ -81,10 +82,33 @@ class CrawlingDaumNewsTitle:
             url_page_num += 1
         return title_infos
 
+def get_args():
+    parser = argparse.ArgumentParser(description="crawling daum news titile.")
+    parser.add_argument(
+        "--date",
+        default=(date.today() - timedelta(1)).strftime("%Y%m%d"),
+        type=str,
+        help="date of news"
+    )
+    parser.add_argument(
+        "--category",
+        default="all",
+        type=str,
+        help="category of news",
+        choices=["all", "society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"]
+    )
+    args = parser.parse_args()
+    return args
+
 def main():
-    date = "20211205" # YYYYMMDD    
+    args = get_args()
+    date = args.date
     crawling_obj = CrawlingDaumNewsTitle()
-    for category in crawling_obj.categories:
+    if args.category == "all":
+        for category in crawling_obj.categories:
+            crawling_obj.get_daum_news_title(date=date, category=category)
+    else:
+        category = {v:k for k, v in crawling_obj.categories.items()}[args.category]
         crawling_obj.get_daum_news_title(date=date, category=category)
 
 if __name__ == "__main__":
