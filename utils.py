@@ -9,9 +9,12 @@ def collate_fn(
     batched_samples: List[Dict[str, List[int]]],
     pad_token_idx: int,
     pad_keys: List[str] = ["input_ids", "labels"],
+    sort_by_length: bool = True
 ) -> Dict[str, torch.Tensor]:
+    
+    if sort_by_length:
+        batched_samples = sorted(batched_samples, key=lambda x: len(x["input_ids"]), reverse=True)
 
-    batched_samples = sorted(batched_samples, key=lambda x: len(x["input_ids"]), reverse=True)
     keys = batched_samples[0].keys()
     outputs = defaultdict(list)
 
@@ -62,6 +65,9 @@ def freeze(
 def unfreeze_all(model: nn.Module) -> NoReturn:
     for p in model.parameters():
         p.requires_grad = True
+        
+def cal_rouge():
+    pass
 
 class PrintInfo:
     
