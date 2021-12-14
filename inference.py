@@ -40,7 +40,15 @@ def inference(args):
             attention_mask = batch["attention_mask"].cuda()  # (B, L_src)
 
             # 일단 ext 안 거치고 바로 generate
-            summary_ids = model.generate(input_ids=input_ids, attention_mask=attention_mask, num_beams=8, max_length=128, min_length=4)  # args로 받기
+            summary_ids = model.generate(
+                input_ids=input_ids, 
+                attention_mask=attention_mask, 
+                num_beams=8, 
+                max_length=128, 
+                min_length=4,
+                repetition_penalty=1.2,
+                no_repeat_ngram_size=3,
+            )  # args로 받기
             summary_sent = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
             final_sents.extend(summary_sent)
             
