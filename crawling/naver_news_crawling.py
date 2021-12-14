@@ -27,7 +27,7 @@ class CrawlingNaverNews:
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
 
-        driver = webdriver.Chrome('/opt/ml/shkim/chromedriver', chrome_options=chrome_options)
+        driver = webdriver.Chrome('./chromedriver', chrome_options=chrome_options)
         return driver
 
     def _driver_wait(self):

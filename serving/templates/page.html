@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% set active_page = data.category %}
+
+{% block title %}FastAPI Starter{% endblock %}
+
+{% block head %}
+{{ super() }}
+{% endblock %}
+
+{% block page_content %}
+
+{% include "include/sidebar.html" %}
+<div style="margin-left: 250px; margin-right: 250px;">
+    <div class="text-left" style="margin: 50px 0;">
+        <h1>요약</h1>
+        
+        {% for summ in data.summary %}
+        <p class="fw-bold text-dark">{{summ}}</p>
+        {% endfor %}
+    </div>
+    <div class="text-center" style="margin: 50px 0;">
+        <audio controls>
+            <source src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}" type="audio/mpeg" />
+            Your browser does not support the audio element.
+        </audio>    
+    </div>
+    <div class="text-center" style="margin: 50px 0;">
+        <a href="{{data.podcast_link}}">팟캐스트 링크</a>
+    </div>
+    <div class="text-left" style="margin: 50px 0;">
+        <h1>원본 기사</h1>
+        <br>
+        <h3 class="text-dark">{{data.title}}</h3>
+        <br>
+        <p >{{data.pub_date}}</p>
+        {% for atricle in data.article %}
+        <p class="text-dark">{{atricle['sentence']}}</p>
+        {% endfor %}
+        
+    </div>
+</div>
+
+
+
+{% endblock %}

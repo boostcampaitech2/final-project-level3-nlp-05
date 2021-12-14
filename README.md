@@ -2,17 +2,32 @@
 
 final-project-level3-nlp-05 created by GitHub Classroom
 
-# EasyBART - An Extractive/Abstractive Summarization model yields better results using a single BART model
+## 가상환경 생성
+```
+python -m venv .venv
+source .venv/bin/activate
+```
+## 패키지 설정
+```
+sh requirements.sh
+```
+## airflow
 
-## BERTSum
+### 설정
+```
+cd airflow
+export AIRFLOW_HOME=.
+sh airflow_setting.sh
+```
 
-## Two-stage Hierarchical Attention (sentence-level attention + word-level attention)
+### 웹서버 실행
+```
+airflow webserver --port 8080
+```
 
-## Attention Mechanisms
+### 웹서버 실행
+```
+airflow scheduler
+```
 
-### Hierarchical attention
-
-### Soft attention
-
-### Hard attention
-
+## 요약 모델
