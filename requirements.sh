@@ -39,3 +39,15 @@ pip install pytest==6.2.5
 
 # 2.2 airflow
 pip install apache-airflow==2.2.0
+
+
+## 3. Summarization Model
+
+# 3.1 data
+pip install pyarrow
+pip install pandas
+
+# 3.2 model
+pip install torch
+pip install transformers
+pip install wandb
