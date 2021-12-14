@@ -3,6 +3,7 @@ import json
 import torch
 from torch.utils.data import Dataset
 import pyarrow.parquet as pq
+import pandas as pd
 
 from transformers import PreTrainedTokenizerFast, BartTokenizerFast
 
@@ -55,3 +56,40 @@ class SummaryDataset(Dataset):
 
     def get_df(self):
         return self.raw_data.to_pandas()
+    
+    
+class TestDataset(Dataset):
+    def __init__(self, json_path: str, tokenizer: BartTokenizerFast, max_seq_len: int = 1024):
+        self.path = json_path
+        self.tokenizer = tokenizer
+        self.max_seq_len = max_seq_len
+
+        self.raw_data = pd.read_json(json_path)
+        self.raw_data = self.raw_data[:100]  # sample
+
+    def __len__(self):
+        return len(self.raw_data)
+
+    def __getitem__(self, idx):
+        input_sentence = self.raw_data["text"][idx]
+
+        # input_ids: bos t t t eos ?
+        input_ids = [self.tokenizer.bos_token_id] + self.tokenizer.encode(" ".join(input_sentence)) + [self.tokenizer.eos_token_id]
+        attention_mask = [1.] * len(input_ids)
+        
+        # truncate
+        if len(input_ids) > self.max_seq_len:
+            input_ids = input_ids[:self.max_seq_len-1] + [self.tokenizer.eos_token_id]
+            attention_mask = [1.] * self.max_seq_len        
+
+        return {
+            "input_ids": torch.tensor(input_ids),
+            "attention_mask": torch.tensor(attention_mask),
+        }
+
+    def get_df(self):
+        return self.raw_data
+    
+    def get_id_column(self):
+        return self.raw_data['id'].tolist()
+    
