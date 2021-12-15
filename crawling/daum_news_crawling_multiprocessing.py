@@ -44,7 +44,7 @@ if __name__ == "__main__":
     
     processes = []
     for i in range(1, args.max_page+1, args.page_count):
-        cmd = f"python daum_news_crawling.py --date {args.date} --category {args.category} --start_page {i} --page_count {args.page_count}"
+        cmd = f"python ./crawling/daum_news_crawling.py --date {args.date} --category {args.category} --start_page {i} --page_count {args.page_count}"
         p = multiprocessing.Process(target=worker, args=(cmd,))
         p.start()
         processes.append(p)
@@ -54,4 +54,4 @@ if __name__ == "__main__":
         
     finish = time.perf_counter()
     
-    print(f"total {finish - start:.4f} seconds")
+    print(f"total {(finish - start)/60:.2f} minutes")
