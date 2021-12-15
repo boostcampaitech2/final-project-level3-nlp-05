@@ -4,6 +4,7 @@ requirements 설치
 sh ./crawling_requirements.sh
 ```
 
+<br>
 
 # 크롤링
 - [x] 위키트리 뉴스기사 크롤링
@@ -12,7 +13,48 @@ sh ./crawling_requirements.sh
 - [x] 네이트 일자별 카테고리별 뉴스 키워드 크롤링
 - [x] 네이버 일자별 랭킹 뉴스 제목 크롤링
 
-# wikitree_crawling.py result
+<br>
+
+# 다음 뉴스 크롤링 방법
+
+## 1. 다음 뉴스 기사 제목 및 url 크롤링
+
+```bash
+python daum_news_title_crawling.py --date 20211208 --category society
+```
+
+- arguments
+  - `--date`: 크롤링하고자 하는 날짜 지정
+  - `--category`: 크롤링하고자 하는 카테고리 지정
+- 실행 결과 기사 제목과 url 정보를 포함하고 있는 json 파일 생성됨
+
+<br>
+
+## 2. 다음 뉴스 기사 본문 크롤링 (multiprocessing)
+
+```bash
+python daum_news_crawling_multiprocessing.py --date 20211208 --category society --page_count 50 --max_page 1000
+```
+
+- arguments
+  - `--date`
+    - 크롤링하고자 하는 날짜 지정
+  - `--category`
+    - 크롤링하고자 하는 카테고리 지정
+  - `--page_count`
+    - 한 프로세스에서 크롤링할 기사의 페이지 개수
+    - `기사 개수 = 페이지 개수 * 15`
+  - `--max_page`
+    - 1.을 통해 생성된 json 파일의 가장 마지막 기사의 마지막 페이지 번호
+    - default 값인 1000을 사용하면 마지막 페이지까지 자동으로 가져온다.
+- 실행 결과 각 페이지별 기사 본문을 포함하고 있는 json 파일들이 생성된다.
+- 2021년 12월 8일 사회 기사 크롤링 시 약 18분 정도가 걸리는 것을 확인할 수 있었다.
+
+<br>
+
+# result structure
+
+## wikitree_crawling.py result
 
 ```
 {
@@ -29,7 +71,7 @@ sh ./crawling_requirements.sh
 }
 ```
 
-# naver_news_crawling.py result
+## naver_news_crawling.py result
 
 ```
 {
@@ -62,10 +104,10 @@ sh ./crawling_requirements.sh
 }
 ```
 
-# nate_crawling.py
+## nate_crawling.py
 - terminal 출력
 
-# daum_news_title_crawling.py
+## daum_news_title_crawling.py
 
 - 
 
@@ -88,7 +130,7 @@ sh ./crawling_requirements.sh
 }
 ```
 
-# daum_news_crawling.py
+## daum_news_crawling.py
 
 ```
 {
