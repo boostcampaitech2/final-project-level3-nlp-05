@@ -1,14 +1,10 @@
+import platform
 import argparse
 from datetime import date, timedelta
 import json
 from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
-from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from pyvirtualdisplay import Display
-from tqdm import tqdm
 import re
 
 
@@ -29,23 +25,23 @@ class CrawlingDaumNewsTitle:
         self.driver = self._get_driver()
         
     def _get_driver(self):
-        '''
-        selenium
-        '''
-        display = Display(visible=0, size=(1920, 1080))
-        display.start()
-        
+        os_type = "Mac" if platform.system() == "Darwin" else "Linux"
+        chromedriver_path = ""
+        if os_type == "Mac":
+            chromedriver_path = "/opt/homebrew/bin/chromedriver"
+        else:
+            chromedriver_path = "./chromedriver"
+
+        if os_type == "Linux":
+            display = Display(visible=0, size=(1920, 1080))
+            display.start()
+
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
-        driver = webdriver.Chrome('./chromedriver', chrome_options=chrome_options)
+        driver = webdriver.Chrome(chromedriver_path, options=chrome_options)
         return driver
-
-    def _driver_wait(self):
-        WebDriverWait(self.driver, 2).until(
-            expected_conditions.invisibility_of_element((By.CSS_SELECTOR, "__initial_loading"))
-        )
 
     def get_daum_news_title(self, date, category):
         json_result = {"date": date, "category": category}
@@ -59,8 +55,9 @@ class CrawlingDaumNewsTitle:
         while True:
             print(f'{category} page {url_page_num:03d} crawling...')
             url = f"{self.title_base_url}/{self.categories[category]}?page={url_page_num}&regDate={date}"
+            
+            self.driver.implicitly_wait(3)
             self.driver.get(url)
-            self._driver_wait()
 
             bsObject = BeautifulSoup(self.driver.page_source, "html.parser")
              
