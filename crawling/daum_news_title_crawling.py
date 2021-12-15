@@ -1,3 +1,4 @@
+import os
 import platform
 import argparse
 from datetime import date, timedelta
@@ -6,6 +7,7 @@ from selenium import webdriver
 from bs4 import BeautifulSoup
 from pyvirtualdisplay import Display
 import re
+import time
 
 
 class CrawlingDaumNewsTitle:
@@ -45,8 +47,19 @@ class CrawlingDaumNewsTitle:
 
     def get_daum_news_title(self, date, category):
         json_result = {"date": date, "category": category}
+
+        save_dir = f"./data/{date}"
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+
+        file_name = f"daum_titles_{date}_{category}.json"
+        if os.path.isfile(os.path.join(save_dir, file_name)):
+            print(f'{file_name} is already generated.')
+            return
+        
         json_result["articles"] = self._get_article_title_info(date, category)
-        with open(f"daum_titles_{date}_{category}.json", "w", encoding="utf-8") as f:
+
+        with open(os.path.join(save_dir, file_name), "w", encoding="utf-8") as f:
             json.dump(json_result, f, ensure_ascii=False)
 
     def _get_article_title_info(self, date, category):
@@ -83,15 +96,16 @@ def get_args():
     parser = argparse.ArgumentParser(description="crawling daum news titile.")
     parser.add_argument(
         "--date",
-        default=(date.today() - timedelta(1)).strftime("%Y%m%d"),
+        default=(date.today() - timedelta(1)).strftime("%Y%m%d"), # 어제 날짜
         type=str,
         help="date of news"
     )
     parser.add_argument(
-        "--category",
+        "--categories",
+        nargs="+",
         default="all",
         type=str,
-        help="category of news",
+        help="categories of news",
         choices=["all", "society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"]
     )
     args = parser.parse_args()
@@ -101,12 +115,20 @@ def main():
     args = get_args()
     date = args.date
     crawling_obj = CrawlingDaumNewsTitle()
-    if args.category == "all":
+
+    start = time.perf_counter()
+
+    if "all" in args.categories:
         for category in crawling_obj.categories:
             crawling_obj.get_daum_news_title(date=date, category=category)
     else:
-        category = {v:k for k, v in crawling_obj.categories.items()}[args.category]
-        crawling_obj.get_daum_news_title(date=date, category=category)
+        for category in args.categories:
+            category = {v:k for k, v in crawling_obj.categories.items()}[category]
+            crawling_obj.get_daum_news_title(date=date, category=category)
+
+    finish = time.perf_counter()
+
+    print(f"total {(finish - start)/60:.2f} minutes")
 
 if __name__ == "__main__":
     main()

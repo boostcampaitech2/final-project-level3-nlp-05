@@ -1,3 +1,4 @@
+import os
 import argparse
 from datetime import date, timedelta
 import json
@@ -43,6 +44,12 @@ class CrawlingDaumNews:
         return driver
 
     def generate_article_json(self, date, category, start_page, page_count):
+        save_dir = f"./data/{date}"
+        file_name = f"daum_articles_{date}_{category}_{start_page:03d}.json"
+        if os.path.isfile(os.path.join(save_dir, file_name)):
+            print(f'{file_name} is already generated.')
+            return
+
         title_data = self._get_title_data(date, category)
         
         json_result = []
@@ -55,7 +62,7 @@ class CrawlingDaumNews:
                 if info:
                     json_result.append(info)
         
-            with open(f"daum_articles_{date}_{category}_{start_page:03d}.json", "w", encoding="utf-8") as f:
+            with open(os.path.join(save_dir, file_name), "w", encoding="utf-8") as f:
                 json.dump(json_result, f, ensure_ascii=False)
             
             if self.error_urls:
@@ -64,7 +71,7 @@ class CrawlingDaumNews:
                     print(error_url)
 
     def _get_title_data(self, date, category):
-        with open(f"daum_titles_{date}_{category}.json", "r", encoding="utf-8") as f:
+        with open(f"./data/{date}/daum_titles_{date}_{category}.json", "r", encoding="utf-8") as f:
             title_data = json.load(f)
         return title_data
 

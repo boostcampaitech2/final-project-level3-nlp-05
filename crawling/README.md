@@ -20,12 +20,15 @@ sh ./crawling_requirements.sh
 ## 1. 다음 뉴스 기사 제목 및 url 크롤링
 
 ```bash
-python daum_news_title_crawling.py --date 20211208 --category society
+python daum_news_title_crawling.py --date 20211208 --categories "society" "economic"
 ```
 
 - arguments
-  - `--date`: 크롤링하고자 하는 날짜 지정
-  - `--category`: 크롤링하고자 하는 카테고리 지정
+  - `--date`
+    - 크롤링하고자 하는 날짜 지정
+  - `--categories`
+    - 크롤링하고자 하는 카테고리 리스트 지정
+    - `all` 지정 시 모든 카테고리에 대해 실행됨
 - 실행 결과 기사 제목과 url 정보를 포함하고 있는 json 파일 생성됨
 
 <br>
