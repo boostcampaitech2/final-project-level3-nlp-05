@@ -17,10 +17,10 @@ def get_args():
     )
     parser.add_argument(
         "--category",
-        default="all",
+        default="society",
         type=str,
         help="category of news",
-        choices=["all", "society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"]
+        choices=["society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"]
     )
     parser.add_argument(
         "--page_count",
@@ -30,7 +30,7 @@ def get_args():
     )
     parser.add_argument(
         "--max_page",
-        default=1,
+        default=1000,
         type=int,
         help="page count",
     )    
