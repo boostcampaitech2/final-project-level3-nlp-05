@@ -4,6 +4,7 @@ import platform
 import itertools
 import collections
 import pkg_resources  # pip install py-rouge
+from typing import Union, List, Dict
 from io import open
 
 if platform.system() == "Windows":
@@ -278,7 +279,20 @@ class Rouge:
 
         return evaluated_count, reference_count, overlapping_count
 
-    def get_scores(self, hypothesis, references):
+    def get_scores(
+        self, 
+        hypothesis: Union[List[str], str], 
+        references: Union[List[str], str],
+    ) -> Dict[str, float]:
+        """Returns Rough score
+        
+        Args:
+            hypothesis (List[str]) - the list of gold sentences
+            references (List[str]) - the list of predicted sentences
+            
+        Returns:
+            Scores (Dict[str, float])
+        """
         if isinstance(hypothesis, str):
             hypothesis, references = [hypothesis], [references]
 
@@ -286,7 +300,8 @@ class Rouge:
             raise ValueError("'hyps' and 'refs' are not of the same type")
 
         if len(hypothesis) != len(references):
-            raise ValueError("'hyps' and 'refs' do not have the same length")
+            raise ValueError(f"'hyps' and 'refs' do not have the same length {len(hypothesis)} {len(references)}")
+        
         scores = {}
         has_rouge_n_metric = (
             len([metric for metric in self.metrics if metric.split("-")[-1].isdigit()]) > 0
