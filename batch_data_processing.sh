@@ -31,3 +31,13 @@ python ./clustering/retriever.py --date 20211214 --category sports
 python ./clustering/retriever.py --date 20211214 --category digital
 
 # 3. summarization
+echo ""
+echo "summary..."
+python ./summary/inference.py --date 20211214 --category society
+python ./summary/inference.py --date 20211214 --category politics
+python ./summary/inference.py --date 20211214 --category economic
+python ./summary/inference.py --date 20211214 --category foreign
+python ./summary/inference.py --date 20211214 --category culture
+python ./summary/inference.py --date 20211214 --category entertain
+python ./summary/inference.py --date 20211214 --category sports
+python ./summary/inference.py --date 20211214 --category digital

@@ -92,4 +92,10 @@ class TestDataset(Dataset):
     
     def get_id_column(self):
         return self.raw_data['id'].tolist()
+
+    def get_category_column(self):
+        return self.raw_data['category'].tolist()
+
+    def get_title_column(self):
+        return self.raw_data['title'].tolist()
     
