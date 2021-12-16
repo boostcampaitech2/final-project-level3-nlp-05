@@ -58,7 +58,7 @@ python ./summary/inference.py --date 20211214 --category society
 - 크롤링, 클러스터링, 요약, TTS 배치 단위 실행
 
 ```
-sh ./batch_data_processing
+sh ./batch_data_processing.sh 20211215
 ```
 
 <br>
