@@ -7,6 +7,9 @@ from bs4 import BeautifulSoup
 from pyvirtualdisplay import Display
 from tqdm import tqdm
 import platform
+import warnings
+
+warnings.filterwarnings("ignore")
 
 class CrawlingDaumNews:
     categories = {

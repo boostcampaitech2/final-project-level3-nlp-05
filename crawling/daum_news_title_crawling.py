@@ -8,6 +8,9 @@ from bs4 import BeautifulSoup
 from pyvirtualdisplay import Display
 import re
 import time
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class CrawlingDaumNewsTitle:

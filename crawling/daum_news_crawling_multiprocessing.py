@@ -41,6 +41,9 @@ if __name__ == "__main__":
     args = get_args()
 
     start = time.perf_counter()
+
+    print()
+    print(f"Processing {args.category}")
     
     processes = []
     for i in range(1, args.max_page+1, args.page_count):
