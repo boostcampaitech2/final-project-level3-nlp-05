@@ -4,6 +4,9 @@ import re
 import string
 import timeit
 
+import os
+from glob import glob
+
 import pandas as pd
 import numpy as np
 from collections import defaultdict
@@ -17,6 +20,9 @@ from sklearn.preprocessing import normalize
 from konlpy.tag import Hannanum #Okt
 from datetime import date, timedelta
 
+import warnings
+
+warnings.filterwarnings("ignore")
 
 def filter_sentence_articles(df):
     """ 300자 이하 3문장 이하인 기사 제거 """
@@ -47,8 +53,8 @@ def json_to_df(json_path) :
     for i in range(len(df['article'])):
         result = []
         for j in range(len(df['article'][i])):
-            result += (df['article'][i][j]['sentence']).strip()
-        df['article'][i] =''.join(result)
+            result.append(df['article'][i][j]['sentence'].strip())
+        df['article'][i] =' '.join(result)
     return df
 
 def corpus_to_sentence(article):
@@ -141,34 +147,25 @@ def print_cluster_details(cluster_details):
         print('Article :',cluster_details[cluster_num]['article'])
         print('='*50)
 
-def retrieve_json(day, category, cluster_details, retrive_topk_clusters):
-    id = ""
-    if category == "경제" : id = "1-"
-    elif category == "사회" : id = "2-"
-    elif category == "정치": id = "3-"
+def retrieve_json(day, categories_kor, category, cluster_details, retrive_topk_clusters):
+    id = categories_kor.index(category) + 1
     total = []
     num = 1
     for cluster_num in retrive_topk_clusters:
         dict = {}
-        dict['id'] = id + str(num) +"-"+ str(day)
+        dict['id'] = f"{id}-{num:04d}-{day}"
         dict['category'] = category
         dict['title'] = cluster_details[cluster_num]['title']
         article = cluster_details[cluster_num]['article'] # 다.으로 분리 index
-        
-        tmp = []
-        new_list = corpus_to_sentence(article)
-        for i in range(len(new_list)):
-            index_text = {'index': i, 'text':new_list[i]}
-            tmp.append([index_text])
-        dict['title'] = tmp
+        dict['text'] = corpus_to_sentence(article)
         total.append(dict)
         num += 1
-    with open(f'clustering_{day}_{category}.json', 'w') as f:
+    with open(f'./data/{day}/clustering_{day}_{category}.json', 'w') as f:
         json.dump(total, f, ensure_ascii=False) 
 
 
 ##################################################################################
-if __name__ == "__main__":
+def main():
     start = timeit.default_timer()
     # 사회, 경제, 정치...
     # 날짜랑 카테고리 parser
@@ -184,21 +181,31 @@ if __name__ == "__main__":
         default="politics",
         type=str,
         help="category of news",
-        choices=["society", "politics", "economic"]
+        choices=["society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"]
     )
-    category_list = {'society':'사회',
-        'politics':'정치',
-        'economic':'경제',
-        'foreign':'국제',
-        'culture':'문화',
-        'entertain':'연예',
-        'sports':'스포츠',
-        'digital':'IT'}
+    categories_eng = ["society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"]
+    categories_kor = ["사회", "정치", "경제", "국제", "문화", "연예", "스포츠", "IT"]
+    category_list = {}
+    for eng, kor in zip(categories_eng, categories_kor):
+        category_list[eng] = kor
+
     args = parser.parse_args()
 
-    daily_category_specific_dir = f'../news/articles/daum_articles_{args.date}_{category_list[args.category]}.json'
+    # 페이지별로 분리된 json 파일 통합
+    file_path = f'./data/{args.date}'
+    save_file_name = f"clustering_{args.date}_{category_list[args.category]}.json"
+    if os.path.isfile(os.path.join(file_path, save_file_name)):
+        print(f'{save_file_name} is already generated.')
+        return
+    file_name = f"daum_articles_{args.date}_{category_list[args.category]}"
+    file_list = [file for file in glob(os.path.join(file_path, "*")) if file_name in file]
 
-    df = json_to_df(daily_category_specific_dir)
+    df = pd.DataFrame()
+    for file in file_list:
+        sub_df = json_to_df(file)
+        df = pd.concat([df, sub_df])
+    df = df.reset_index(drop=True)
+
     print(f'{len(df)} articles exist for Category : {category_list[args.category]}', '\n')
 
     # 전처리
@@ -221,6 +228,7 @@ if __name__ == "__main__":
     df['concat_nouns'] = ''
 
     # Preprocessing nouns from concated (title + article)
+    print(f"Preprocessing nouns...")
     for i in range(len(df['concat'])):
         tmp = ' '.join(han.nouns(df['concat'][i]))
         df['concat_nouns'][i] = tmp
@@ -267,4 +275,7 @@ if __name__ == "__main__":
     print_cluster_details(cluster_details)
 
     topk_list= retrieve_topk_clusters(df, 3)
-    retrieve_json(args.date, category_list[args.category], cluster_details, topk_list)
+    retrieve_json(args.date, categories_kor, category_list[args.category], cluster_details, topk_list)
+
+if __name__ == "__main__":
+    main()
