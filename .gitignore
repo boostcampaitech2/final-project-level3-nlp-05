@@ -2,5 +2,6 @@ __pycache__
 *.pyc
 .DS_Store
 .venv/
-airflow/logs/
+saved/
 data/
+airflow/logs/
