@@ -22,6 +22,27 @@ categories = {
     'digital': 'IT'
 }
 
+def _make_generation_input(batch_input_ids, batch_eos_positions, batch_ext_ids, tokenizer):
+    '''make input data for generation'''
+    gen_input_ids = []
+    gen_attention_mask = []
+    for i in range(len(batch_input_ids)):
+        input_ids = [tokenizer.bos_token_id]
+        eos_positions = torch.cat((torch.tensor([0]).cuda(), batch_eos_positions[i]))
+
+        for id in batch_ext_ids[i]:
+            # sentence tokens
+            sent_ids = batch_input_ids[i][eos_positions[id]+1:eos_positions[id+1]]
+            input_ids.extend(sent_ids)
+        input_ids.append(tokenizer.eos_token_id)
+        attention_mask = [1.] * len(input_ids)
+        print(len(input_ids), len(attention_mask))
+        
+        gen_input_ids.append(input_ids)
+        gen_attention_mask.append(attention_mask)
+
+    return torch.tensor(gen_input_ids), torch.tensor(gen_attention_mask)
+
 def inference(args):
     # device
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -60,11 +81,20 @@ def inference(args):
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].to(device)  # (B, L_src)
             attention_mask = batch["attention_mask"].to(device)  # (B, L_src)
+            eos_positions = batch["eos_positions"].to(device)
+
+            ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask)
+
+            # 일단 무조건 3개 이상 나오고, top 3개만 자른다고 가정
+            TOPK = 3
+            top_ext_ids = torch.argsort(ext_out.logits, dim=-1, descending=True)[:, :TOPK]  # (B, TOPK)
+
+            gen_input_ids, gen_attention_mask = _make_generation_input(input_ids, eos_positions, top_ext_ids, tokenizer)
 
             # 일단 ext 안 거치고 바로 generate
             summary_ids = model.generate(
-                input_ids=input_ids, 
-                attention_mask=attention_mask, 
+                input_ids=gen_input_ids, 
+                attention_mask=gen_attention_mask, 
                 num_beams=8, 
                 max_length=128, 
                 min_length=4,
