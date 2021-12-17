@@ -5,48 +5,66 @@ from fastapi.templating import Jinja2Templates
 from .library.helpers import *
 import json
 
+import os
+from pathlib import Path
+import datetime
+
 app = FastAPI()
 
 templates = Jinja2Templates(directory="templates")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    date = "20211205"
-    category = "문화"
-    with open(f"./static/data/daum_articles_{date}_{category}.json", "r", encoding="utf-8") as f:
-        article_data = json.load(f)
-    article = article_data[2]
-    data = {
-        "title":article['title'],
-        "summary": article['abstractive'],
-        "article":article['article'],
-        "audio_link":"",
-        "audio_file": "sample-audio.mp3",
-        "podcast_link":"https://www.podbbang.com/",
-        "category":article['category'],
-        "pub_date":article['publish_date'],
+DATA_ROOT = os.path.join(Path(os.getcwd()).parent, "data")
+CATEGORIES_DICT = {
+    'society': '사회',
+    'politics': '정치',
+    'economic': '경제',
+    'foreign': '국제',
+    'culture': '문화',
+    'entertain': '연예',
+    'sports': '스포츠',
+    'digital': 'IT'
+}
 
-    }
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request, sel_date: str = None):
+    date_list = get_date_list(DATA_ROOT)
+    #date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
+    date = "20211215"
+    if sel_date is not None:
+        date = sel_date    
+
     return templates.TemplateResponse(
-        "page.html",
-        {"request": request, "data": data}
+        "index.html",
+        {
+            "request": request,
+            "date_list": date_list,
+            "date": date
+        }
     )   
 
-@app.get("/page/{page_name}", response_class=HTMLResponse)
-async def page(request: Request, page_name: str):
-    
-    data = {
-        "title":"",
-        "summary": "",
-        "article":"",
-        "audio_link":"",
-        "pod_cast_link":"",
-        "category":"",
-        "pub_date":"",
-    }
+@app.get("/page/{category}", response_class=HTMLResponse)
+async def page(request: Request, category: str, sel_date: str = None):
+    date_list = get_date_list(DATA_ROOT)
+    #date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
+    date = "20211215"
+    if sel_date is not None:
+        date = sel_date
+
+    clustering_data = get_json_data(os.path.join(DATA_ROOT, f"{date}/clustering_{date}_{CATEGORIES_DICT[category]}.json"))
+    summary_data = get_json_data(os.path.join(DATA_ROOT, f"{date}/summary_{date}_{CATEGORIES_DICT[category]}.json"))
+    json_data = get_merge_data(clustering_data, summary_data)
+
     return templates.TemplateResponse(
         "page.html",
-        {"request": request, "data": data}
+        {
+            "request": request,
+            "data_root": DATA_ROOT,
+            "date_list": date_list,
+            "date": date,
+            "category_eng": category,
+            "category_kor": CATEGORIES_DICT[category],
+            "json_data": json_data,
+        }
     )

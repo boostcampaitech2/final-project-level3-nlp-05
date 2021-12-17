@@ -23,3 +23,8 @@ footer {
     margin-left: auto;
     margin-right: auto;
 }
+
+.custom-container{
+    margin-left: 250px;
+    margin-right: 250px;
+}

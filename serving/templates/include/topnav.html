@@ -5,7 +5,7 @@
             <i class="fas fa-align-left"></i>
             <span>Toggle Sidebar</span>
         </button> -->
-        <h2> This Is Real News </h2>
+        <h2> 귀가노니 </h2>
         <button class="btn btn-dark d-inline-block d-lg-none ml-auto" type="button" data-toggle="collapse"
             data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
             aria-label="Toggle navigation">
@@ -14,6 +14,9 @@
         
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="nav navbar-nav ml-auto">
+                <li class="nav-item {{'active' if active_page == 'home' }}">
+                    <a class="nav-link" href="/">Home</a>
+                </li>          
                 <li class="nav-item {{'active' if active_page == 'society' }}">
                     <a class="nav-link" href="/page/society">사회</a>
                 </li>
@@ -23,7 +26,22 @@
                 <li class="nav-item {{'active' if active_page == 'economic' }}">
                     <a class="nav-link" href="/page/economic">경제</a>
                 </li>
+                <li class="nav-item {{'active' if active_page == 'foreign' }}">
+                    <a class="nav-link" href="/page/foreign">국제</a>
+                </li>
+                <li class="nav-item {{'active' if active_page == 'culture' }}">
+                    <a class="nav-link" href="/page/culture">문화</a>
+                </li>
+                <li class="nav-item {{'active' if active_page == 'entertain' }}">
+                    <a class="nav-link" href="/page/entertain">연예</a>
+                </li>
+                <li class="nav-item {{'active' if active_page == 'sports' }}">
+                    <a class="nav-link" href="/page/sports">스포츠</a>
+                </li>
+                <li class="nav-item {{'active' if active_page == 'digital' }}">
+                    <a class="nav-link" href="/page/digital">IT</a>
+                </li>
+
             </ul>
-        </div>
     </div>
 </nav>
