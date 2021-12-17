@@ -24,9 +24,11 @@ class SummaryDataset(Dataset):
         target_ids = self.raw_data["extractive"][idx].as_py()
 
         input_ids = [self.tokenizer.bos_token_id]
+        eos_positions = []
 
         for sentence in input_sentences:
             input_ids.extend(self.tokenizer.encode(sentence))
+            eos_positions.append(len(input_ids))
             input_ids.append(self.tokenizer.eos_token_id)
 
         attention_mask = None
@@ -51,7 +53,8 @@ class SummaryDataset(Dataset):
             "input_ids": torch.tensor(input_ids),
             "attention_mask": torch.tensor(attention_mask),
             "answers": target_ids,
-            "labels": torch.tensor(labels)
+            "labels": torch.tensor(labels),
+            "eos_positions": torch.tensor(eos_positions)
         }
 
     def get_df(self):
@@ -92,4 +95,10 @@ class TestDataset(Dataset):
     
     def get_id_column(self):
         return self.raw_data['id'].tolist()
+
+    def get_category_column(self):
+        return self.raw_data['category'].tolist()
+
+    def get_title_column(self):
+        return self.raw_data['title'].tolist()
     
