@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% set active_page = data.category %}
+{% set active_page = category_eng %}
 
-{% block title %}FastAPI Starter{% endblock %}
+{% block title %}귀가노니{% endblock %}
 
 {% block head %}
 {{ super() }}
@@ -11,34 +11,71 @@
 {% block page_content %}
 
 {% include "include/sidebar.html" %}
-<div style="margin-left: 250px; margin-right: 250px;">
-    <div class="text-left" style="margin: 50px 0;">
-        <h1>요약</h1>
+<div class="custom-container">
+    <div>
+        <div style="float: left;">
+            <h1>{{date[:4]}}년 {{date[4:6]}}월 {{date[6:8]}}일 {{category_kor}} 뉴스 Top3</h1>
+        </div>
+        <div style="display: flex; justify-content: right; position: relative; top: 8px;">
+            <div class="btn-group dropright">
+                <!-- style="padding: 0 45px 0 20px;" -->
+                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding-right: 45px; padding-left: 20px;">
+                  날짜 선택
+                </button>
+                <div class="dropdown-menu">
+                    {% for date_candidate in date_list %}
+                    <a class="dropdown-item {{'active' if date == date_candidate}}" href="/page/{{category_eng}}/?sel_date={{date_candidate}}">{{date_candidate[:4]}}-{{date_candidate[4:6]}}-{{date_candidate[6:8]}}</a>
+                    {% endfor %}
+                </div>
+              </div>
+        </div>
+    </div>
+    <br>
+    <div id="accordion">
+        {% for data in json_data %}
+        <div class="card">
+            <div class="card-header" id="headingOne">
+              <h5 class="mb-0">
+                <button class="btn btn-link" data-toggle="collapse" data-target="#collapse_{{data.id}}" aria-expanded="true" aria-controls="collapse_{{data.id}}" style="width: 100%">
+                  <div style="float: left; margin-top: 17px;">
+                    {{data.title}}
+                </div>
+                  <div style="float: right;">
+                    <audio controls style="vertical-align: middle;">
+                        <!-- <source src="{{ url_for('static', path='/data/{{data.audio_file}}') }}" type="audio/mpeg" /> -->
+                        <source src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}" type="audio/mpeg" />
+                        <!-- <source src="{{data.audio_file}}" type="audio/mpeg" /> -->
+                        Your browser does not support the audio element.
+                    </audio>   
+                </div>
+                </button>
+              </h5>
+            </div>
         
-        {% for summ in data.summary %}
-        <p class="fw-bold text-dark">{{summ}}</p>
-        {% endfor %}
-    </div>
-    <div class="text-center" style="margin: 50px 0;">
-        <audio controls>
-            <source src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}" type="audio/mpeg" />
-            Your browser does not support the audio element.
-        </audio>    
-    </div>
-    <div class="text-center" style="margin: 50px 0;">
-        <a href="{{data.podcast_link}}">팟캐스트 링크</a>
-    </div>
-    <div class="text-left" style="margin: 50px 0;">
-        <h1>원본 기사</h1>
-        <br>
-        <h3 class="text-dark">{{data.title}}</h3>
-        <br>
-        <p >{{data.pub_date}}</p>
-        {% for atricle in data.article %}
-        <p class="text-dark">{{atricle['sentence']}}</p>
-        {% endfor %}
-        
-    </div>
+            <div id="collapse_{{data.id}}" class="collapse" aria-labelledby="headingOne" data-parent="#accordion">
+              <div class="card-body">
+                  <div>
+                    <h2>요약</h2>
+                    <div>
+                        <p class="text-dark">{{data.summary}}</p>
+                    </div>
+                  </div>
+                  <div>
+                    
+                  </div>              
+                  <div>
+                    <h2>원본 기사</h2>
+                    <div>
+                      {% for article in data.article %}
+                      <p class="text-dark">{{article}}</p>
+                      {% endfor %}
+                    </div>
+                  </div>                
+              </div>
+            </div>
+          </div>
+        {% endfor %}        
+      </div>    
 </div>
 
 
