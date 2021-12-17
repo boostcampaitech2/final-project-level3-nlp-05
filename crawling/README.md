@@ -1,23 +1,8 @@
-# How to start?
-requirements 설치
-```
-sh ./crawling_requirements.sh
-```
+# 크롤링 (crawling)
 
-<br>
+## 다음 뉴스 크롤링 방법
 
-# 크롤링
-- [x] 위키트리 뉴스기사 크롤링
-  - 요약문과 뉴스 본문 크롤링
-  - AI Hub 문서요약 텍스트 - 신문 기사 샘플 데이터와 유사한 형태로 만들기
-- [x] 네이트 일자별 카테고리별 뉴스 키워드 크롤링
-- [x] 네이버 일자별 랭킹 뉴스 제목 크롤링
-
-<br>
-
-# 다음 뉴스 크롤링 방법
-
-## 1. 다음 뉴스 기사 제목 및 url 크롤링
+### 다음 뉴스 기사 제목 및 url 크롤링
 
 ```bash
 python daum_news_title_crawling.py --date 20211208 --categories "society" "economic"
@@ -33,7 +18,7 @@ python daum_news_title_crawling.py --date 20211208 --categories "society" "econo
 
 <br>
 
-## 2. 다음 뉴스 기사 본문 크롤링 (multiprocessing)
+### 다음 뉴스 기사 본문 크롤링 (multiprocessing)
 
 ```bash
 python daum_news_crawling_multiprocessing.py --date 20211208 --category society --page_count 50 --max_page 1000
@@ -55,9 +40,61 @@ python daum_news_crawling_multiprocessing.py --date 20211208 --category society 
 
 <br>
 
-# result structure
+## 크롤링 결과물 구조
 
-## wikitree_crawling.py result
+### daum_news_title_crawling.py
+
+```
+{
+  "date": "20211205",
+  "category": "국제",
+  "articles": [
+      {
+        'id': '015_08',
+        'title': '헝다 \'디폴트\' 가능성 시사..中 "개별 사건" 파장 최소화 주력', 
+        'url': 'https://v.daum.net/v/20211205151346812',
+      },
+      {
+        'id': '015_09', 
+        'title': '백건우 "삶을 얼마나 깊이 깨달았느냐에 따라 음악도 깊어져"', 
+        'url': 'https://v.daum.net/v/20211205151104773',
+      },
+  ]
+}
+```
+
+### daum_news_crawling.py
+
+```
+[
+  {
+    "id": "353465974", 
+    "category": "종합",
+    "source": "KBS", 
+    "publish_date": "2019-07-22 00:00:00", 
+    "extractive": [0],
+    "abstractive": ["요약 문장1","요약 문장2"],
+    "title": "충주시, 민간지원 보조사업 대형축제 운영 감사 돌입", 
+    "text": [
+      [
+        {"index": 0, "sentence": "문장1"}, 
+        {"index": 1, "sentence": "문장2"},
+      ],
+      [
+        {"index": 2, "sentence": "문장3"},
+      ]        
+    ]
+  }
+]
+
+```
+
+<br>
+
+<details>
+    <summary>미사용 구조</summary>
+    
+### wikitree_crawling.py result
 
 ```
 {
@@ -74,7 +111,7 @@ python daum_news_crawling_multiprocessing.py --date 20211208 --category society 
 }
 ```
 
-## naver_news_crawling.py result
+### naver_news_crawling.py result
 
 ```
 {
@@ -107,45 +144,7 @@ python daum_news_crawling_multiprocessing.py --date 20211208 --category society 
 }
 ```
 
-## nate_crawling.py
+### nate_crawling.py
 - terminal 출력
 
-## daum_news_title_crawling.py
-
-- 
-
-```
-{
-  "date": "20211205",
-  "category": "국제",
-  "articles": [
-      {
-        'id': '015_08',
-        'title': '헝다 \'디폴트\' 가능성 시사..中 "개별 사건" 파장 최소화 주력', 
-        'url': 'https://v.daum.net/v/20211205151346812',
-      },
-      {
-        'id': '015_09', 
-        'title': '백건우 "삶을 얼마나 깊이 깨달았느냐에 따라 음악도 깊어져"', 
-        'url': 'https://v.daum.net/v/20211205151104773',
-      },
-  ]
-}
-```
-
-## daum_news_crawling.py
-
-```
-{
-    "id": "353465974", 
-    "category": "종합", 
-    "publish_date": "2019-07-22 00:00:00", 
-    "extractive": [0],
-    "abstractive": ["요약 문장1","요약 문장2"],
-    "title": "충주시, 민간지원 보조사업 대형축제 운영 감사 돌입", 
-    "article": [
-        {"index": 0, "sentence": "보조금 집행 위법행위·지적사례 늘어"}, 
-        {"index": 1, "sentence": "특별감사반, 2017~2018년 축제 점검"},
-    ]
-}
-```
+</details>
