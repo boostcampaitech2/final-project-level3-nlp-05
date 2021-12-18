@@ -10,7 +10,6 @@
 
 {% block page_content %}
 
-<<<<<<< HEAD
     {% include "include/sidebar.html" %}
     <div class="custom-container">
         <div>
@@ -192,28 +191,3 @@
         </div>
 
     {% endblock %}
-=======
-{% include "include/sidebar.html" %}
-<div class="custom-container">
-    <div>
-        <div style="float: left;">
-            <h1>{{date[:4]}}년 {{date[4:6]}}월 {{date[6:8]}}일 전체 뉴스 요약 듣기</h1>
-        </div>
-        <div style="display: flex; justify-content: right; position: relative; top: 8px;">
-            <div class="btn-group dropright">
-                <!-- style="padding: 0 45px 0 20px;" -->
-                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding-right: 45px; padding-left: 20px;">
-                  날짜 선택
-                </button>
-                <div class="dropdown-menu">
-                    {% for date_candidate in date_list %}
-                    <a class="dropdown-item {{'active' if date == date_candidate}}" href="/?sel_date={{date_candidate}}">{{date_candidate[:4]}}-{{date_candidate[4:6]}}-{{date_candidate[6:8]}}</a>
-                    {% endfor %}
-                </div>
-              </div>
-        </div>
-    </div>
-</div>
-
-{% endblock %}
->>>>>>> cebe6c2063753ab6df7e9e29c7284afa4bb414cc

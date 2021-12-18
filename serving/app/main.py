@@ -30,12 +30,7 @@ CATEGORIES_DICT = {
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, sel_date: str = None):
     date_list = get_date_list(DATA_ROOT)
-<<<<<<< HEAD
     date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
-=======
-    #date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
-    date = "20211215"
->>>>>>> cebe6c2063753ab6df7e9e29c7284afa4bb414cc
     if sel_date is not None:
         date = sel_date    
 
@@ -44,7 +39,6 @@ async def home(request: Request, sel_date: str = None):
         {
             "request": request,
             "date_list": date_list,
-<<<<<<< HEAD
             "date": date,
             "data_root": DATA_ROOT
         }
@@ -62,8 +56,6 @@ async def home(request: Request, sel_date: str = None):
         {
             "request": request,
             "date_list": date_list,
-=======
->>>>>>> cebe6c2063753ab6df7e9e29c7284afa4bb414cc
             "date": date
         }
     )   
@@ -104,10 +96,7 @@ async def page(request: Request, category: str, sel_date: str = None):
         "page.html",
         {
             "request": request,
-<<<<<<< HEAD
             "err_msg": "",
-=======
->>>>>>> cebe6c2063753ab6df7e9e29c7284afa4bb414cc
             "data_root": DATA_ROOT,
             "date_list": date_list,
             "date": date,
