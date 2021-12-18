@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% set active_page = category_eng %}
+
+{% block title %}귀가노니{% endblock %}
+
+{% block head %}
+    {{ super() }}
+{% endblock %}
+
+{% block page_content %}
+
+    {% include "include/sidebar.html" %}
+
+    <div class="custom-container">
+
+        <div>
+            <div style="float: left;">
+                <h1>[{{category_kor}}] 
+                    {{date[:4]}}년
+                    {{date[4:6]}}월
+                    {{date[6:8]}}일
+                    </h1>
+            </div>
+            <div
+                style="display: flex; justify-content: right; position: relative; top: 8px;">
+                <div class="btn-group dropright">
+                    <!-- style="padding: 0 45px 0 20px;" -->
+                    <button
+                        type="button"
+                        class="btn btn-secondary dropdown-toggle"
+                        data-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        style="padding-right: 45px; padding-left: 20px;">
+                        날짜 선택
+                    </button>
+                    <div class="dropdown-menu">
+                        {% for date_candidate in date_list %}
+                            <a
+                                class="dropdown-item {{'active' if date == date_candidate}}"
+                                href="/page/{{category_eng}}/?sel_date={{date_candidate}}">{{date_candidate[:4]}}-{{date_candidate[4:6]}}-{{date_candidate[6:8]}}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if err_msg == "" %}
+            
+            <div style="margin-top: 30px;">
+                <div class="card ">
+                    <div class="card-body text-center">
+                        <div class="audio_component_big text-center">
+                            <audio controls="controls" style="vertical-align: middle;">
+                                <source
+                                    src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                    type="audio/mpeg"/>
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                    </div>                
+                </div>
+                <div style="margin-top: 50px;">
+                    <h3>요약문 및 원본 기사</h3>
+                </div>
+                <div id="accordion" style="margin-top: 20px;">
+                    {% for data in json_data %}
+                        <div class="card">
+                            <div class="card-header" id="headingOne">
+                                <h5 class="mb-0">
+                                    <button
+                                        class="btn btn-link"
+                                        data-toggle="collapse"
+                                        data-target="#collapse_{{data.id}}"
+                                        aria-expanded="true"
+                                        aria-controls="collapse_{{data.id}}"
+                                        style="width: 100%">
+                                        <div style="float: left;">
+                                            {{data.title}}
+                                        </div>
+                                        <div style="float: right;">
+                                            <span class="text-dark">{{data.source}}</span>
+                                        </div>
+                                    </button>
+                                </h5>
+                            </div>
+
+                            <div
+                                id="collapse_{{data.id}}"
+                                class="collapse"
+                                aria-labelledby="headingOne"
+                                data-parent="#accordion">
+                                <div class="card-body">
+                                    <div style="margin-bottom: 15px;">
+                                        {% for feature in data.top_features %}
+                                            <span>#{{feature}}</span>
+                                        {% endfor %}
+                                    </div>
+                                    <div>
+                                        <h4>요약</h4>
+                                        <div style="padding:0px 20px;">
+                                            <p class="text-dark">{{data.summary}}</p>
+                                        </div>
+                                    </div>
+                                    <div></div>
+                                    <div>
+                                        <h4>원본 기사</h4>
+                                        <div style="padding:0px 20px;">
+                                            {% for article in data.article %}
+                                                <p class="text-dark">{{article}}</p>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+        {% else %}
+            <br>
+            <div class="alert alert-warning" role="alert">
+                {{err_msg}}
+            </div>
+
+        {% endif %}
+
+    </div>
+
+{% endblock %}

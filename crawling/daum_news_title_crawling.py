@@ -1,13 +1,16 @@
+import os
+import platform
+import argparse
+from datetime import date, timedelta
 import json
 from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
-from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 from pyvirtualdisplay import Display
-from tqdm import tqdm
 import re
+import time
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class CrawlingDaumNewsTitle:
@@ -27,29 +30,39 @@ class CrawlingDaumNewsTitle:
         self.driver = self._get_driver()
         
     def _get_driver(self):
-        '''
-        selenium
-        '''
-        display = Display(visible=0, size=(1920, 1080))
-        display.start()
-        
+        os_type = "Mac" if platform.system() == "Darwin" else "Linux"
+        chromedriver_path = ""
+        if os_type == "Mac":
+            chromedriver_path = "/opt/homebrew/bin/chromedriver"
+        else:
+            chromedriver_path = "./chromedriver"
+
+        if os_type == "Linux":
+            display = Display(visible=0, size=(1920, 1080))
+            display.start()
+
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
-
-        driver = webdriver.Chrome('./chromedriver', chrome_options=chrome_options)
+        driver = webdriver.Chrome(chromedriver_path, options=chrome_options)
         return driver
-
-    def _driver_wait(self):
-        WebDriverWait(self.driver, 2).until(
-            expected_conditions.invisibility_of_element((By.CSS_SELECTOR, "__initial_loading"))
-        )
 
     def get_daum_news_title(self, date, category):
         json_result = {"date": date, "category": category}
+
+        save_dir = f"./data/{date}"
+        if not os.path.isdir(save_dir):
+            os.makedirs(save_dir)
+
+        file_name = f"daum_titles_{date}_{category}.json"
+        if os.path.isfile(os.path.join(save_dir, file_name)):
+            print(f'{file_name} is already generated.')
+            return
+        
         json_result["articles"] = self._get_article_title_info(date, category)
-        with open(f"daum_titles_{date}_{category}.json", "w", encoding="utf-8") as f:
+
+        with open(os.path.join(save_dir, file_name), "w", encoding="utf-8") as f:
             json.dump(json_result, f, ensure_ascii=False)
 
     def _get_article_title_info(self, date, category):
@@ -58,8 +71,9 @@ class CrawlingDaumNewsTitle:
         while True:
             print(f'{category} page {url_page_num:03d} crawling...')
             url = f"{self.title_base_url}/{self.categories[category]}?page={url_page_num}&regDate={date}"
+            
+            self.driver.implicitly_wait(3)
             self.driver.get(url)
-            self._driver_wait()
 
             bsObject = BeautifulSoup(self.driver.page_source, "html.parser")
              
@@ -81,11 +95,43 @@ class CrawlingDaumNewsTitle:
             url_page_num += 1
         return title_infos
 
+def get_args():
+    parser = argparse.ArgumentParser(description="crawling daum news titile.")
+    parser.add_argument(
+        "--date",
+        default=(date.today() - timedelta(1)).strftime("%Y%m%d"), # 어제 날짜
+        type=str,
+        help="date of news"
+    )
+    parser.add_argument(
+        "--categories",
+        nargs="+",
+        default="all",
+        type=str,
+        help="categories of news",
+        choices=["all", "society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"]
+    )
+    args = parser.parse_args()
+    return args
+
 def main():
-    date = "20211205" # YYYYMMDD    
+    args = get_args()
+    date = args.date
     crawling_obj = CrawlingDaumNewsTitle()
-    for category in crawling_obj.categories:
-        crawling_obj.get_daum_news_title(date=date, category=category)
+
+    start = time.perf_counter()
+
+    if "all" in args.categories:
+        for category in crawling_obj.categories:
+            crawling_obj.get_daum_news_title(date=date, category=category)
+    else:
+        for category in args.categories:
+            category = {v:k for k, v in crawling_obj.categories.items()}[category]
+            crawling_obj.get_daum_news_title(date=date, category=category)
+
+    finish = time.perf_counter()
+
+    print(f"total {(finish - start)/60:.2f} minutes")
 
 if __name__ == "__main__":
     main()

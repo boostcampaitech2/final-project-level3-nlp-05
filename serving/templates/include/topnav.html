@@ -1,0 +1,39 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+
+        <!-- <button type="button" id="sidebarCollapse" class="btn btn-info">
+            <i class="fas fa-align-left"></i>
+            <span>Toggle Sidebar</span>
+        </button> -->
+        <h1 style="font-weight: 900;">귀가노니</h1>
+        <p style="position: relative; left: 13px; top: 12px;"><b>출퇴근길에 듣는 인공지능 뉴스 팟캐스트</b></p>
+        <button class="btn btn-dark d-inline-block d-lg-none ml-auto" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+            aria-label="Toggle navigation">
+            <i class="fas fa-align-justify"></i>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="nav navbar-nav ml-auto">
+                <li class="nav-item {{'active' if active_page == 'home' }}">
+                    <a class="nav-link" href="/">Home</a>
+                </li>  
+                <!-- <li class="nav-item {{'active' if active_page == 'custom' }}">
+                    <a class="nav-link" href="/custom">Custom</a>
+                </li>       -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false" style="padding-right: 50px;">Category</a>
+                    <div class="dropdown-menu">
+                      <a class="dropdown-item {{'active' if active_page == 'society' }}" href="/page/society">사회</a>
+                      <a class="dropdown-item {{'active' if active_page == 'politics' }}" href="/page/politics">정치</a>
+                      <a class="dropdown-item {{'active' if active_page == 'economic' }}" href="/page/economic">경제</a>
+                      <a class="dropdown-item {{'active' if active_page == 'foreign' }}" href="/page/foreign">국제</a>
+                      <a class="dropdown-item {{'active' if active_page == 'culture' }}" href="/page/culture">문화</a>
+                      <a class="dropdown-item {{'active' if active_page == 'entertain' }}" href="/page/entertain">연예</a>
+                      <a class="dropdown-item {{'active' if active_page == 'sports' }}" href="/page/sports">스포츠</a>
+                      <a class="dropdown-item {{'active' if active_page == 'digital' }}" href="/page/digital">IT</a>
+                    </div>
+                </li>  
+            </ul>
+    </div>
+</nav>
