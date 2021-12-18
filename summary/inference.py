@@ -27,26 +27,35 @@ categories = {
     'digital': 'IT'
 }
 
-def _make_generation_input(batch_input_ids, batch_eos_positions, batch_ext_ids, tokenizer):
-    '''make input data for generation'''
-    gen_input_ids = []
-    gen_attention_mask = []
-    for i in range(len(batch_input_ids)):
-        input_ids = [tokenizer.bos_token_id]
-        eos_positions = torch.cat((torch.tensor([0]).cuda(), batch_eos_positions[i]))
+def extract_sentences(
+    input_ids: torch.FloatTensor,
+    eos_positions: torch.LongTensor,
+    ext_ids: torch.LongTensor,
+    tokenizer: BartTokenizerFast,  
+):
+    PAD = tokenizer.pad_token_id
+    gen_batch_inputs = []
+    attention_mask = []
 
-        for id in batch_ext_ids[i]:
-            # sentence tokens
-            sent_ids = batch_input_ids[i][eos_positions[id]+1:eos_positions[id+1]]
-            input_ids.extend(sent_ids)
-        input_ids.append(tokenizer.eos_token_id)
-        attention_mask = [1.] * len(input_ids)
-        print(len(input_ids), len(attention_mask))
-        
-        gen_input_ids.append(input_ids)
-        gen_attention_mask.append(attention_mask)
+    for i in range(input_ids.size(0)):
+        ids = ext_ids[i][ext_ids[i] >= 0].tolist()
+        sentences = [torch.tensor([tokenizer.bos_token_id])]
+        for idx in ids:
+            from_pos = 1 if idx == 0 else (eos_positions[i, idx-1].item() + 1)
+            to_pos = (eos_positions[i, idx].item() + 1)
+            
+            ext_sentence = input_ids[i, from_pos:to_pos].clone().detach()
+            sentences.append(ext_sentence)
+        sentences = torch.cat(sentences, dim=0)
+        gen_batch_inputs.append(sentences)
+        attention_mask.append(torch.ones(len(sentences)))
 
-    return torch.tensor(gen_input_ids), torch.tensor(gen_attention_mask)
+    gen_batch_inputs = torch.nn.utils.rnn.pad_sequence(gen_batch_inputs, padding_value=PAD, batch_first=True)
+    attention_mask = torch.nn.utils.rnn.pad_sequence(attention_mask, padding_value=PAD, batch_first=True)
+    return {
+        "input_ids": gen_batch_inputs,
+        "attention_mask": attention_mask,
+    }
 
 def inference(args):
     # device
@@ -94,12 +103,12 @@ def inference(args):
             TOPK = 3
             top_ext_ids = torch.argsort(ext_out.logits, dim=-1, descending=True)[:, :TOPK]  # (B, TOPK)
 
-            gen_input_ids, gen_attention_mask = _make_generation_input(input_ids, eos_positions, top_ext_ids, tokenizer)
+            gen_batch = extract_sentences(input_ids, eos_positions, top_ext_ids, tokenizer)
 
             # 일단 ext 안 거치고 바로 generate
             summary_ids = model.generate(
-                input_ids=gen_input_ids, 
-                attention_mask=gen_attention_mask, 
+                input_ids=gen_batch["input_ids"].to(device), 
+                attention_mask=batch["attention_mask"].to(device), 
                 num_beams=8, 
                 max_length=128, 
                 min_length=4,
