@@ -1,15 +1,20 @@
-import argparse
-from dataset import TestDataset
-from transformers import BartTokenizerFast, BartConfig
-from torch.utils.data import DataLoader
-from utils import collate_fn
 import os
-from model import BartSummaryModelV2
-import torch
-from tqdm import tqdm
-import pandas as pd
-from datetime import date, timedelta
 import json
+import argparse
+from datetime import date, timedelta
+
+import pandas as pd
+
+import torch
+from torch.utils.data import DataLoader
+
+from transformers import BartTokenizerFast, BartConfig
+
+from model import BartSummaryModelV2
+from dataset import TestDataset
+from utils import collate_fn
+
+from tqdm import tqdm
 
 categories = {
     'society': '사회',
