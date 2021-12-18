@@ -106,7 +106,7 @@ def inference(args):
 
             summary_ids = model.generate(
                 input_ids=gen_batch["input_ids"].to(device), 
-                attention_mask=batch["attention_mask"].to(device), 
+                attention_mask=gen_batch["attention_mask"].to(device), 
                 num_beams=8, 
                 max_length=128, 
                 min_length=4,
