@@ -2,6 +2,7 @@ import os
 import json
 import argparse
 from datetime import date, timedelta
+from unicodedata import category
 
 import pandas as pd
 
@@ -15,17 +16,18 @@ from dataset import TestDataset
 from utils import collate_fn
 
 from tqdm import tqdm
+import glob
 
-categories = {
-    'society': '사회',
-    'politics': '정치',
-    'economic': '경제',
-    'foreign': '국제',
-    'culture': '문화',
-    'entertain': '연예',
-    'sports': '스포츠',
-    'digital': 'IT'
-}
+
+def concat_json(data_dir, date):
+    '''combine files for each category into one whole json file'''
+    dir_path = os.path.join(data_dir, date)
+    result = []
+    for file in glob.glob(f"{dir_path}/*.json"):
+        with open(file, "r") as f:
+            result.extend(json.load(f))
+    with open(f"{dir_path}/cluster_for_summary_{date}.json", "w") as f:
+        json.dump(result, f, ensure_ascii=False)
 
 def extract_sentences(
     input_ids: torch.FloatTensor,
@@ -66,14 +68,16 @@ def inference(args):
     model = BartSummaryModelV2.from_pretrained(args.model_dir)  # 일단
     
     # get data
-    data_dir = f"./data/{args.date}"
-    file_name = f"clustering_{args.date}_{categories[args.category]}.json"
-    save_file_name = f"summary_{args.date}_{categories[args.category]}.json"
+    data_dir = os.path.join(args.data_dir, args.date)
+
+    save_file_name = f"summary_{args.date}.json"
     if os.path.isfile(os.path.join(data_dir, save_file_name)):
         print(f'{save_file_name} is already generated.')
         return
         
+    file_name = f"clustering_for_summary_{args.date}.json"
     test_file = os.path.join(data_dir, file_name)
+
     test_dataset = TestDataset(test_file, tokenizer)
     
     print("test_dataset length:", len(test_dataset))
@@ -145,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument('--tokenizer', type=str, default="gogamza/kobart-summarization")
     parser.add_argument('--data_dir', type=str, default="/opt/ml/dataset/Test")
     parser.add_argument('--date', type=str, default=(date.today() - timedelta(1)).strftime("%Y%m%d")) # 어제날짜
-    parser.add_argument('--category', type=str, default='society', choices=["society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"])
     args = parser.parse_args()
     
+    concat_json(args.data_dir, args.date)
     inference(args)
