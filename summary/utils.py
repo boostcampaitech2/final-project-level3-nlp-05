@@ -20,14 +20,18 @@ def collate_fn(
 
     for key in keys:
         for sample in batched_samples:
-            if not isinstance(sample[key], torch.Tensor):
-                sample[key] = torch.tensor(sample[key])
-            outputs[key].append(sample[key])
+            if sample[key] is not None:
+                if not isinstance(sample[key], torch.Tensor):
+                    sample[key] = torch.tensor(sample[key])
+                outputs[key].append(sample[key])
+            else:
+                outputs[key] = None
         PAD = pad_token_idx if key in pad_keys else 0
         PAD = -1 if key == "answers" else PAD
         
-        outputs[key] = torch.nn.utils.rnn.pad_sequence(outputs[key], padding_value=PAD, batch_first=True)
-    
+        if outputs[key] is not None:
+            outputs[key] = torch.nn.utils.rnn.pad_sequence(outputs[key], padding_value=PAD, batch_first=True)
+
     return dict(outputs)
 
 def freeze(
