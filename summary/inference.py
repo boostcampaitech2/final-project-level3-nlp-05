@@ -72,7 +72,7 @@ def inference(args):
     if os.path.isfile(os.path.join(data_dir, save_file_name)):
         print(f'{save_file_name} is already generated.')
         return
-    # test_file = os.path.join(args.data_dir, "test.json")
+        
     test_file = os.path.join(data_dir, file_name)
     test_dataset = TestDataset(test_file, tokenizer)
     
@@ -85,7 +85,6 @@ def inference(args):
         collate_fn=lambda x: collate_fn(x, pad_token_idx=tokenizer.pad_token_id, sort_by_length=False),
         drop_last=False
     )
-    # pad, attention 맞는지 확인하기!
 
     model.to(device)
     model.eval()
@@ -105,7 +104,6 @@ def inference(args):
 
             gen_batch = extract_sentences(input_ids, eos_positions, top_ext_ids, tokenizer)
 
-            # 일단 ext 안 거치고 바로 generate
             summary_ids = model.generate(
                 input_ids=gen_batch["input_ids"].to(device), 
                 attention_mask=batch["attention_mask"].to(device), 
@@ -125,7 +123,7 @@ def inference(args):
     
     test_title = test_dataset.get_title_column()
     test_category = test_dataset.get_category_column()
-    #output = pd.DataFrame({'id': test_id,'summary': final_sents})
+
     output = []
     for i, id in enumerate(test_id):
         output.append({
@@ -143,7 +141,6 @@ def inference(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    # 나중에 수정하기
     parser.add_argument('--model_dir', type=str, default="./saved")
     parser.add_argument('--tokenizer', type=str, default="gogamza/kobart-summarization")
     parser.add_argument('--data_dir', type=str, default="/opt/ml/dataset/Test")
