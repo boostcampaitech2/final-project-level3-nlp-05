@@ -82,7 +82,7 @@ def inference(args):
         print(f'{save_file_name} is already generated.')
         return
         
-    file_name = f"clustering_for_summary_{args.date}.json"
+    file_name = f"cluster_for_summary_{args.date}.json"
     test_file = os.path.join(data_dir, file_name)
 
     test_dataset = SummaryDataset(test_file, tokenizer)
