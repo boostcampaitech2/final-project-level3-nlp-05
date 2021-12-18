@@ -256,7 +256,7 @@ def main():
 
     # 페이지별로 분리된 json 파일 통합
     file_path = f'./data/{args.date}'
-    save_file_name = f"clustering_{args.date}_{category_list[args.category]}.json"
+    save_file_name = f"cluster_for_summary_{args.date}_{category_list[args.category]}.json"
     if os.path.isfile(os.path.join(file_path, save_file_name)):
         print(f'{save_file_name} is already generated.')
         return
