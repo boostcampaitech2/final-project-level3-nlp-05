@@ -6,3 +6,4 @@ saved/
 data/
 airflow/logs/
 .ipynb_checkpoints/
+wandb/
