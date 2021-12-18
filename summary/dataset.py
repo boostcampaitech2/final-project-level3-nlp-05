@@ -74,7 +74,7 @@ class SummaryDataset(Dataset):
         return {
             "input_ids": torch.tensor(input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(attention_mask, dtype=torch.float),
-            "eos_positions": torch.tensor(eos_positions, dtype=torch.float),
+            "eos_positions": torch.tensor(eos_positions, dtype=torch.long),
             "answers": torch.tensor(target_ids, dtype=torch.long) if target_ids else None, # exists if not is_train
             "labels": torch.tensor(labels, dtype=torch.long) if labels else None, # exists if not is_train
         }
