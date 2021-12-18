@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import os
 import timeit
+import shutil
 
 import tensorflow as tf
 
@@ -21,6 +22,16 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
+dict_categories = {
+        "economic":"경제",
+        "society": "사회",
+        "politics":"정치",
+        "digital":"IT",
+        "foreign":"국제", 
+        "culture": "문화",
+        "entertain":"연예", 
+        "sports":"스포츠", 
+    }
 
 def get_args():
     """ retrieve arguments for tts inference """
@@ -60,18 +71,6 @@ def get_args():
     return args
 
 
-# 이거 따로 저장해놓고 계속 사용해도 되지 않을까요?!
-dict_categories = {
-        "economic":"경제",
-        "society": "사회",
-        "politics":"정치",
-        "digital":"IT",
-        "foreign":"국제", 
-        "culture": "문화",
-        "entertain":"연예", 
-        "sports":"스포츠", 
-    }
-
 def generate_conjunction(text2mel_model, text2mel_processor, mel2wav_model, sample_rate, dict_categories):
     """ drop conjunction audio files  """
     
@@ -109,7 +108,7 @@ def text_fill(date):
     return opening 
 
 
-def audio_drop(summary, date, id, text2mel_model, text2mel_processor, mel2wav_model, sample_rate):
+def audio_drop(summary, date, id, text2mel_model, text2mel_processor, mel2wav_model, sample_rate, split=False):
     """ audio drop using text2mel & mel2wav """
     input_ids = text2mel_processor.text_to_sequence(summary)
     if text2mel_model == 'fastspeech2':
@@ -127,8 +126,12 @@ def audio_drop(summary, date, id, text2mel_model, text2mel_processor, mel2wav_mo
         speaker_ids=tf.convert_to_tensor([0], dtype=tf.int32),
     )
     audio = mel2wav_model.inference(mel_output)[0, :, 0]
-    sf.write(f'./data/{date}/tts/voice_files/{id}.wav', audio, sample_rate, "PCM_16")
-
+    if not split:
+        sf.write(f'./data/{date}/tts/voice_files/{id}.wav', audio, sample_rate, "PCM_16")
+    else :
+        if not os.path.isdir(f"./data/{args.date}/tts/voice_files/temp"):
+            os.makedirs(f"./data/{args.date}/tts/voice_files/temp")
+        sf.write(f'./data/{date}/tts/voice_files/temp/{id}.wav', audio, sample_rate, "PCM_16")
 
 ##############################################################################
 def main():
@@ -154,7 +157,7 @@ def main():
 
 
     # load json args.date for the name
-    with open(f"./data/{args.date}/summary/summary_{args.date}.json", "r", encoding="utf-8") as f: # summary_{date.json}
+    with open(f"./data/{args.date}/summary.json", "r", encoding="utf-8") as f:
         data = json.load(f)
         
     # change to honorific
@@ -174,7 +177,7 @@ def main():
     opening = text_fill(args.date)
     audio_drop(opening, args.date, 'opening_',text2mel_model, text2mel_processor, mb_melgan, args.sample_rate)
     
-    # split summary text if larger than split_length (부자연스러운 끊김 있는지 확인)
+    # split summary text if larger than split_length
     for idx,summary in tqdm(data['summary'].items()):
         if len(summary) > args.split_length :
             for i in range((len(summary)//args.split_length)+1):
@@ -189,12 +192,16 @@ def main():
                     text2mel_model = text2mel_model, 
                     text2mel_processor = text2mel_processor, 
                     mel2wav_model = mb_melgan, 
-                    sample_rate = args.sample_rate
-                    # split = True
+                    sample_rate = args.sample_rate,
+                    split = True
                 )
-            # for loop 끝날때 분리된 wav파일 합쳐주고 기존 제거
-            # audio
-            # 3-1 3-2 -> 1,2,3-1,3-2
+            split_sounds = []
+            path = sorted(os.listdir(f"./data/{args.date}/tts/voice_files/temp"))
+            split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/temp',path), format="wav"))
+            split_overlay = sum(split_sounds)
+            split_overlay.export(f"../data/{args.date}/tts/voice_files/{data['id'][idx]}.wav", format="wav")
+            shutil.rmtree(f"./data/{args.date}/tts/voice_files/temp")
+
         else :
             audio_drop(
                 summary = summary, 
@@ -233,7 +240,7 @@ def main():
     silence_long = AudioSegment.silent(duration=args.pause_long)
     silence_short= AudioSegment.silent(duration=args.pause_short)
     
-    for path in ordered_list:
+    for i, path in enumerate(ordered_list):
         if path.split('_')[1] == '0.wav':
             sounds.append(AudioSegment.from_file(os.path.join(f'./data/conjunction/',path), format="wav"))
             sounds.append(silence_short)
@@ -241,11 +248,15 @@ def main():
             sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/',path), format="wav"))
             if path == 'opening_.wav':
                 sounds.append(silence_short)
-            elif '.wav' in path.split('-')[0] : # split 안된애들 -> slience long ['aaa-1.wav','aaa-2.wav']
-                sounds.append(silence_long)
-            # else :
-            #     sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/',path), format="wav"))
-
+            else :
+                # 여기 바꿔야함 (노아님)
+                current_category = path.split('_')[0]
+                if i < len(ordered_list)-1:
+                    next_category = ordered_list[i + 1].split('_')[0]
+                    if current_category != next_category:
+                        sounds.append(silence_short)
+                    else :
+                        sounds.append(silence_long)
 
     overlay = sum(sounds)
     overlay.export(f"./data/{args.date}/tts/final_{args.date}.wav", format="wav")
@@ -258,13 +269,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-### 추가 구현
-# 긴 요약문 처리
-# 요약문 처리시에 쉼표 우선적 탐색 후 분할 -> 중간 공백 (후순위)
-
-# 7. fine-tuning
-
-### Directory 관련 정리
-# ./data/{날짜}/tts/voice_files -> politics_1 같이 개별
-# ./data/{날짜}/tts/ -> final_{date}.wav
-# ./data/conjunction/ -> economics_0.wav
