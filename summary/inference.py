@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from transformers import BartTokenizerFast, BartConfig
 
 from model import BartSummaryModelV2
-from dataset import TestDataset
+from dataset import SummaryDataset, TestDataset
 from utils import collate_fn
 
 from tqdm import tqdm
@@ -85,7 +85,7 @@ def inference(args):
     file_name = f"clustering_for_summary_{args.date}.json"
     test_file = os.path.join(data_dir, file_name)
 
-    test_dataset = TestDataset(test_file, tokenizer)
+    test_dataset = SummaryDataset(test_file, tokenizer)
     
     print("test_dataset length:", len(test_dataset))
     
