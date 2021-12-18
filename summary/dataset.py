@@ -4,34 +4,50 @@ import torch
 from torch.utils.data import Dataset
 import pyarrow.parquet as pq
 import pandas as pd
+import os
 
 from transformers import PreTrainedTokenizerFast, BartTokenizerFast
 
 class SummaryDataset(Dataset):
     def __init__(
         self, 
-        parquet_path: str, 
+        file_path: str, 
         tokenizer: BartTokenizerFast, 
         max_seq_len: int = 1024, 
         is_train: bool = False,
     ):
-        self.path = parquet_path
+        self.path = file_path
         self.tokenizer = tokenizer
         self.max_seq_len = max_seq_len
         self.is_train = is_train
 
-        self.raw_data = pq.read_table(parquet_path)
+        self._file_ext = os.path.splitext(self.path)[-1].lower()
+        if self._file_ext == ".parquet":
+            self.raw_data = pq.read_table(self.path)
+        elif self._file_ext == ".json":
+            self.raw_data = pd.read_json(self.path)
+            self.raw_data = self._reorganize_text(self.raw_data)
+        else:
+            raise ValueError("File extension must be .parquet or .json")
 
     def __len__(self):
         return len(self.raw_data)
 
     def __getitem__(self, idx):
-        title = self.raw_data["title"][idx].as_py()
-        input_sentences = self.raw_data["text"][idx].as_py()
+        if self._file_ext == ".parquet":
+            title = self.raw_data["title"][idx].as_py()
+            input_sentences = self.raw_data["text"][idx].as_py()
+        else:
+            title = self.raw_data["title"][idx]
+            input_sentences = self.raw_data["text"][idx]
 
         if self.is_train:
-            target_sentence = self.raw_data["abstractive"][idx][0].as_py()
-            target_ids = self.raw_data["extractive"][idx].as_py()
+            if self._file_ext == ".parquet":
+                target_sentence = self.raw_data["abstractive"][idx][0].as_py()
+                target_ids = self.raw_data["extractive"][idx].as_py()
+            else:
+                target_sentence = self.raw_data["abstractive"][idx][0]
+                target_ids = self.raw_data["extractive"][idx]
         else:
             target_sentence = None
             target_ids = None
@@ -81,6 +97,17 @@ class SummaryDataset(Dataset):
 
     def get_df(self):
         return self.raw_data.to_pandas()
+
+    def _to_list_str(self, text):
+        result = []
+        for item in text:
+            if len(item) < 1: continue
+            result.append(item[0]["sentence"])
+        return result
+
+    def _reorganize_text(self, raw_data):
+        raw_data.loc[:, "text"] = raw_data.text.apply(self._to_list_str)
+        return raw_data
     
     
 class TestDataset(Dataset):
