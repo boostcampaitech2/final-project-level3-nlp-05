@@ -20,7 +20,9 @@ def collate_fn(
 
     for key in keys:
         for sample in batched_samples:
-            outputs[key].append(torch.tensor(sample[key]))
+            if not isinstance(sample[key], torch.Tensor):
+                sample[key] = torch.tensor(sample[key])
+            outputs[key].append(sample[key])
         PAD = pad_token_idx if key in pad_keys else 0
         PAD = -1 if key == "answers" else PAD
         

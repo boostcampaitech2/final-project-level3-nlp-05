@@ -13,7 +13,7 @@ class SummaryDataset(Dataset):
         parquet_path: str, 
         tokenizer: BartTokenizerFast, 
         max_seq_len: int = 1024, 
-        is_train: bool = False
+        is_train: bool = False,
     ):
         self.path = parquet_path
         self.tokenizer = tokenizer

@@ -112,8 +112,8 @@ def main():
     train_path = "/opt/ml/dataset/Training/train.parquet"
     eval_path = "/opt/ml/dataset/Training/train.parquet"
 
-    train_dataset = SummaryDataset(train_path, tokenizer)
-    eval_dataset = SummaryDataset(eval_path, tokenizer)
+    train_dataset = SummaryDataset(train_path, tokenizer, is_train=True)
+    eval_dataset = SummaryDataset(eval_path, tokenizer, is_train=True)
 
     print(f"train_dataset length: {len(train_dataset)}, eval_dataset length: {len(eval_dataset)}")
 
@@ -147,7 +147,7 @@ def main():
     optimizer.zero_grad()
 
     for epoch in range(EPOCH):
-        print("=" * 10 + "Epoch " + epoch + " has started!")
+        print("=" * 10 + "Epoch " + str(epoch) + " has started!" + "=" * 10)
         total_steps = train_loop(model, train_dataloader, optimizer, total_steps)
 
         # epoch이 끝나면 누적 loss 데이터 전체 저장
