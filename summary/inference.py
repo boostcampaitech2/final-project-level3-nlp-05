@@ -22,12 +22,19 @@ import glob
 def concat_json(data_dir, date):
     '''combine files for each category into one whole json file'''
     dir_path = os.path.join(data_dir, date)
+
+    save_file_name = f"{dir_path}/cluster_for_summary_{date}.json"
+    if os.path.isfile(save_file_name):
+        print(f'{save_file_name} is already generated.')
+        return
+
     result = []
     for file in glob.glob(f"{dir_path}/*.json"):
         with open(file, "r") as f:
             result.extend(json.load(f))
-    with open(f"{dir_path}/cluster_for_summary_{date}.json", "w") as f:
-        json.dump(result, f, ensure_ascii=False)
+    with open(save_file_name, "w") as f:
+        json.dump(result, f, ensure_ascii=False, indent=4)
+    print("Concatenation Completed!")
 
 def extract_sentences(
     input_ids: torch.FloatTensor,
