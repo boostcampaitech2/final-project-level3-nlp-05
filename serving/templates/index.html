@@ -5,31 +5,189 @@
 {% block title %}귀가노니{% endblock %}
 
 {% block head %}
-{{ super() }}
+    {{ super() }}
 {% endblock %}
 
 {% block page_content %}
 
-{% include "include/sidebar.html" %}
-<div class="custom-container">
-    <div>
-        <div style="float: left;">
-            <h1>{{date[:4]}}년 {{date[4:6]}}월 {{date[6:8]}}일 전체 뉴스 요약 듣기</h1>
-        </div>
-        <div style="display: flex; justify-content: right; position: relative; top: 8px;">
-            <div class="btn-group dropright">
-                <!-- style="padding: 0 45px 0 20px;" -->
-                <button type="button" class="btn btn-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="padding-right: 45px; padding-left: 20px;">
-                  날짜 선택
-                </button>
-                <div class="dropdown-menu">
-                    {% for date_candidate in date_list %}
-                    <a class="dropdown-item {{'active' if date == date_candidate}}" href="/?sel_date={{date_candidate}}">{{date_candidate[:4]}}-{{date_candidate[4:6]}}-{{date_candidate[6:8]}}</a>
-                    {% endfor %}
+    {% include "include/sidebar.html" %}
+    <div class="custom-container">
+        <div>
+            <div style="float: left;">
+                <h1>{{date[:4]}}년
+                    {{date[4:6]}}월
+                    {{date[6:8]}}일</h1>
+            </div>
+            <div
+                style="display: flex; justify-content: right; position: relative; top: 8px;">
+                <div class="btn-group dropright">
+                    <!-- style="padding: 0 45px 0 20px;" -->
+                    <button
+                        type="button"
+                        class="btn btn-secondary dropdown-toggle"
+                        data-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        style="padding-right: 45px; padding-left: 20px;">
+                        날짜 선택
+                    </button>
+                    <div class="dropdown-menu">
+                        {% for date_candidate in date_list %}
+                            <a
+                                class="dropdown-item {{'active' if date == date_candidate}}"
+                                href="/?sel_date={{date_candidate}}">{{date_candidate[:4]}}-{{date_candidate[4:6]}}-{{date_candidate[6:8]}}</a>
+                        {% endfor %}
+                    </div>
                 </div>
-              </div>
+            </div>
         </div>
-    </div>
-</div>
+        <div style="margin-top: 50px;">
+            <h3 class="card-title ml-10">전체</h3>
+            <div class="card ">
+                <div class="card-body text-center">
+                    <div class="audio_component_big text-center">
+                        <audio controls="controls" style="vertical-align: middle;">
+                            <source
+                                src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                type="audio/mpeg"/>
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                </div>                
+            </div>
+            <div style="margin-top: 50px;">
+                <hr class="my-2">
+            </div>
+            <div style="margin-top: 50px;">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <h5 class="card-title ml-10">사회</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="audio_component">
+                                    <audio controls="controls" style="vertical-align: middle;">
+                                        <source
+                                            src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                            type="audio/mpeg"/>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <h5 class="card-title ml-10">정치</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="audio_component">
+                                    <audio controls="controls" style="vertical-align: middle;">
+                                        <source
+                                            src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                            type="audio/mpeg"/>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-10">
+                    <div class="col-sm-6">
+                        <h5 class="card-title ml-10">경제</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="audio_component">
+                                    <audio controls="controls" style="vertical-align: middle;">
+                                        <source
+                                            src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                            type="audio/mpeg"/>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <h5 class="card-title ml-10">국제</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="audio_component">
+                                    <audio controls="controls" style="vertical-align: middle;">
+                                        <source
+                                            src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                            type="audio/mpeg"/>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-10">
+                    <div class="col-sm-6">
+                        <h5 class="card-title ml-10">문화</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="audio_component">
+                                    <audio controls="controls" style="vertical-align: middle;">
+                                        <source
+                                            src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                            type="audio/mpeg"/>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <h5 class="card-title ml-10">연예</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="audio_component">
+                                    <audio controls="controls" style="vertical-align: middle;">
+                                        <source
+                                            src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                            type="audio/mpeg"/>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-10">
+                    <div class="col-sm-6">
+                        <h5 class="card-title ml-10">스포츠</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="audio_component">
+                                    <audio controls="controls" style="vertical-align: middle;">
+                                        <source
+                                            src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                            type="audio/mpeg"/>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <h5 class="card-title ml-10">IT</h5>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="audio_component">
+                                    <audio controls="controls" style="vertical-align: middle;">
+                                        <source
+                                            src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                            type="audio/mpeg"/>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-{% endblock %}
+    {% endblock %}
