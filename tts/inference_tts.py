@@ -22,17 +22,6 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-# dict_categories = {
-#         "economic":"경제",
-#         "society": "사회",
-#         "politics":"정치",
-#         "digital":"IT",
-#         "foreign":"국제", 
-#         "culture": "문화",
-#         "entertain":"연예", 
-#         "sports":"스포츠", 
-#     }
-
 dict_categories = {
         "society": "사회",
         "politics":"정치",
@@ -75,7 +64,7 @@ def get_args():
     
     parser.add_argument('--date', 
         default = (date.today() - timedelta(1)).strftime("%Y%m%d"), # '20211216'
-        type=int,
+        type=str,
         help="date of news summary")
 
     args = parser.parse_args()
@@ -109,7 +98,7 @@ def generate_conjunction(text2mel_model, text2mel_processor, mel2wav_model, samp
             speaker_ids=tf.convert_to_tensor([0], dtype=tf.int32),
             )
         audio = mel2wav_model.inference(mel_output)[0, :, 0]
-        sf.write(f"./data/conjunction/{category}_0.mp3", audio, sample_rate, "PCM_16")
+        sf.write(f"./data/conjunction/{category}_0.wav", audio, sample_rate, "PCM_16")
     
 
 def opening_statement(date, category = False):
@@ -118,7 +107,7 @@ def opening_statement(date, category = False):
     if not category:
         opening = f'안녕하세요 {year}년 {month}월 {day}일자 핵심뉴스 요약입니다.'
     else:
-        opening = f'{category} 뉴스 요약입니다.'
+        opening = f'{dict_categories[category]} 뉴스 요약입니다.'
     return opening 
 
 
@@ -142,14 +131,14 @@ def audio_drop(summary, date, id, text2mel_model, text2mel_processor, mel2wav_mo
     audio = mel2wav_model.inference(mel_output)[0, :, 0]
     if not split:
         if not category:
-            sf.write(f'./data/{date}/tts/voice_files/{id}.mp3', audio, sample_rate, "PCM_16")
+            sf.write(f'./data/{date}/tts/voice_files/{id}.wav', audio, sample_rate, "PCM_16")
         else: 
-            sf.write(f'./data/{date}/tts/category/{id}.mp3', audio, sample_rate, "PCM_16")
+            sf.write(f'./data/{date}/tts/category/{id}.wav', audio, sample_rate, "PCM_16")
 
     else :
         if not os.path.isdir(f"./data/{date}/tts/voice_files/temp"):
             os.makedirs(f"./data/{date}/tts/voice_files/temp")
-        sf.write(f'./data/{date}/tts/voice_files/temp/{id}.mp3', audio, sample_rate, "PCM_16")
+        sf.write(f'./data/{date}/tts/voice_files/temp/{id}.wav', audio, sample_rate, "PCM_16")
 
 ##############################################################################
 def main():
@@ -175,8 +164,6 @@ def main():
 
 
     # load json args.date for the name
-    # with open(f"./data/{args.date}/summary_{args.date}.json", "r", encoding="utf-8") as f:
-    #     data = json.load(f)
     data = pd.read_json(f"./data/{args.date}/summary_{args.date}.json")
 
     order = [1,2,3]*8
@@ -189,12 +176,9 @@ def main():
             text_split[-1] = change_text(text_split[-1])
         row['summary'] = " ".join(text_split)
         row['new_id'] = list(dict_categories.keys())[int(row['id'].split('-')[0]) - 1] + '_' + str(order[i])
-        
-
     # check dir
     if not os.path.isdir(f"./data/{args.date}/tts/voice_files/"):
         os.makedirs(f"./data/{args.date}/tts/voice_files/")
-
     
     # split summary text if larger than split_length
     for idx, summary in tqdm(enumerate(data['summary'])):
@@ -216,9 +200,9 @@ def main():
                 )
             split_sounds = []
             path = sorted(os.listdir(f"./data/{args.date}/tts/voice_files/temp"))
-            split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/temp',path), format="mp3"))
+            split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/temp',path), format="wav"))
             split_overlay = sum(split_sounds)
-            split_overlay.export(f"./data/{args.date}/tts/voice_files/{data['new_id'][idx]}.mp3", format="mp3")
+            split_overlay.export(f"./data/{args.date}/tts/voice_files/{data['new_id'][idx]}.wav", format="wav")
             shutil.rmtree(f"./data/{args.date}/tts/voice_files/temp")
 
         else :
@@ -236,67 +220,63 @@ def main():
         print('Summary Input...')
         print(summary,'\n','-'*100)
 
-
-    # category 별 mp3 하나 만들기 -> 따로 저장
-    if not os.isdir(f"./data/{args.date}/tts/category/"):
-        os.makedir(f"./data/{args.date}/tts/category/")
+    if not os.path.isdir(f"./data/{args.date}/tts/category/"):
+        os.makedirs(f"./data/{args.date}/tts/category/")
     
     silence_long = AudioSegment.silent(duration=args.pause_long)
     silence_short= AudioSegment.silent(duration=args.pause_short)
-
 
     for key in dict_categories.keys():
         split_sounds = []
         path = [file for file in os.listdir(f"./data/{args.date}/tts/voice_files/") if key in file]
         path = sorted(path)
         for ind, file in enumerate(path):
-            split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/',file), format="mp3"))
+            split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/',file), format="wav"))
             if ind < len(path)-1 :
                 split_sounds.append(silence_long)
         split_overlay = sum(split_sounds)
-        split_overlay.export(f"./data/{args.date}/tts/category/{key}.mp3", format="mp3")
+        split_overlay.export(f"./data/{args.date}/tts/category/{key}.wav", format="wav")
 
-        category_opening = opening_statement(args.date, key)
+        category_opening = opening_statement(args.date, category = key)
         audio_drop(category_opening, args.date, f'opening_{key}' ,text2mel_model, text2mel_processor, mb_melgan, args.sample_rate, category = True)
         
-        # category-wise final mp3
-        split_sounds.append(f'opening_{key}.mp3')
+        # category-wise final mp3 -> e.g.> final_politics.mp3
+        split_sounds = []
+        split_sounds.append(AudioSegment.from_file(f'./data/{args.date}/tts/category/opening_{key}.wav', format="wav"))
         split_sounds.append(silence_short)
-        split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/category/',f'{key}.mp3'), format="mp3"))
+        split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/category/',f'{key}.wav'), format="wav"))
         split_overlay = sum(split_sounds)
         split_overlay.export(f"./data/{args.date}/tts/final_{key}.mp3", format="mp3")
 
 
-    # 최종 파일 만들기
+    # final audio files
     opening = opening_statement(args.date)
     audio_drop(opening, args.date, 'opening_',text2mel_model, text2mel_processor, mb_melgan, args.sample_rate, category = True)
 
-    ordered_list = [] # category 폴더에...!
+    ordered_list = []
     file_list = os.listdir(f"./data/{args.date}/tts/category/") + os.listdir(f'./data/conjunction')
     for category in dict_categories.keys(): 
-        for audio in sorted(file_list, reverse = True): # politics_0.mp3, politics.mp3 순서
+        for audio in sorted(file_list, reverse = True): # politics_0.mp3, politics.mp3 order
             if category in audio:
                 ordered_list.append(audio)
 
     # concat split audios
     split_sounds = []
-    split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/category/','opening_.mp3'), format="mp3"))
+    split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/category/','opening_.wav'), format="wav"))
     split_sounds.append(silence_short)
 
-    for ind, path in enumerate(ordered_list): #  category_0.mp3, category.mp3
+    for ind, path in enumerate(ordered_list): #  category_0.wav -> data/conjunction, category.wav -> data/arg.date/tts/category/
         path_root = path.split('.')[0]
         
         if path_root[-1] == '0':
-            split_sounds.append(AudioSegment.from_file(f'./data/conjunction/{path}', format="mp3"))
+            split_sounds.append(AudioSegment.from_file(f'./data/conjunction/{path}', format="wav"))
             split_sounds.append(silence_short)
 
-        elif ind == len(ordered_list) - 1:
-            split_sounds.append(AudioSegment.from_file(f'./data/conjunction/{path}', format="mp3"))
-            split_sounds.append(silence_short)
-            split_sounds.append(AudioSegment.from_file(f'./data/{args.date}/tts/category/{path}', format="mp3"))
+        elif ind == len(ordered_list) - 1 : # no pause for final audio
+            split_sounds.append(AudioSegment.from_file(f'./data/{args.date}/tts/category/{path}', format="wav"))
     
         else:
-            split_sounds.append(AudioSegment.from_file(f'./data/{args.date}/tts/category/{path}', format="mp3"))
+            split_sounds.append(AudioSegment.from_file(f'./data/{args.date}/tts/category/{path}', format="wav"))
             split_sounds.append(silence_short)
         
     overlay = sum(split_sounds)
@@ -310,4 +290,3 @@ def main():
 ##############################################################################
 if __name__ == "__main__":
     main()
-
