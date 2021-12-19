@@ -191,7 +191,7 @@ class BartSummaryModelV2(BartForConditionalGeneration):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-    ):
+    ) -> SentenceClassifierOutput:
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         if labels is not None:
             use_cache = False
