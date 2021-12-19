@@ -31,7 +31,4 @@ done
 # 3. summarization
 echo ""
 echo "summary..."
-for category in $categories
-do
-    python ./summary/inference.py --date $date --category $category
-done
+python ./summary/inference.py --data_dir ./data --date $date

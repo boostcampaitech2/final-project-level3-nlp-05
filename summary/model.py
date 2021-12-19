@@ -146,8 +146,7 @@ class BartSummaryModel(BartForConditionalGeneration):
         last_hidden_state = encoder_outputs[0]
         h_n, _ = self.lstm(last_hidden_state)
         h_n = self.dropout(h_n)
-        logits = self.classifier(h_n)
-        # logits = self.classifier(last_hidden_state) # shape: [B, L, 1]
+        logits = self.classifier(h_n) # shape: [B, L, 1]
         logits = logits.squeeze(-1) # shape: [B, L]
 
         mask = torch.ones_like(logits)
