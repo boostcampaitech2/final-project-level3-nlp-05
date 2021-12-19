@@ -3,7 +3,9 @@
 
 
 # Inference
-
+```
+python inference.py --model_dir ./saved --date 20211217
+```
 
 # 우수 사례
 
