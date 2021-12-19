@@ -46,7 +46,7 @@ def concat_json(data_dir, date):
         return
 
     result = []
-    for file in glob.glob(f"{dir_path}/*.json"):
+    for file in glob.glob(f"{dir_path}/cluster_for_summary*.json"):
         with open(file, "r") as f:
             result.extend(json.load(f))
     with open(save_file_name, "w") as f:
