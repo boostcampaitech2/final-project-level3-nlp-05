@@ -210,7 +210,7 @@ if __name__ == '__main__':
     parser.add_argument("--output_dir", default="./saved", type=str, help="path to save the trained model")
     
     parser.add_argument("--per_device_train_batch_size", default=4, type=int, help="train batch size per device (default: 4)")
-    parser.add_argument("--per_device_eval_batch_size", default=8, type=int, help="train batch size per device (default: 8)")
+    parser.add_argument("--per_device_eval_batch_size", default=8, type=int, help="eval batch size per device (default: 8)")
     parser.add_argument("--num_train_epochs", default=1.0, type=float, help="num train epochs")
     parser.add_argument("--eval_steps", default=500, type=int, help="num train epochs")
     parser.add_argument("--gradient_accumulation_steps", default=1, type=int, help="num gradient accumulation steps")
