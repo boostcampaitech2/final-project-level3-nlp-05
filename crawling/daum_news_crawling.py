@@ -92,7 +92,7 @@ class CrawlingDaumNews:
             source = bsObject.select("em.info_cp img")[0].get('alt')
             abstractive = bsObject.select('.summary_view')
             abstractive = abstractive[0].get_text(strip=True, separator="\n").splitlines() if abstractive else []
-            article = [obj.text.strip() for obj in bsObject.select('#harmonyContainer > section')[0].find_all(["p", "div"]) if obj.text != '']
+            article = [obj.text.strip() for obj in bsObject.select('#harmonyContainer > section p') if obj.text != '']
             article = self._corpus_to_sentence(article)
             date = bsObject.select('.info_view .num_date')[0].text
             date_lst = date.replace('. ','-').split("-")
