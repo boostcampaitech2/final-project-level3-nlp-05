@@ -30,13 +30,29 @@ CATEGORIES_DICT = {
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, sel_date: str = None):
     date_list = get_date_list(DATA_ROOT)
-    #date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
-    date = "20211215"
+    date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
     if sel_date is not None:
         date = sel_date    
 
     return templates.TemplateResponse(
         "index.html",
+        {
+            "request": request,
+            "date_list": date_list,
+            "date": date,
+            "data_root": DATA_ROOT
+        }
+    )   
+
+@app.get("/custom", response_class=HTMLResponse)
+async def home(request: Request, sel_date: str = None):
+    date_list = get_date_list(DATA_ROOT)
+    date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
+    if sel_date is not None:
+        date = sel_date    
+
+    return templates.TemplateResponse(
+        "custom.html",
         {
             "request": request,
             "date_list": date_list,
@@ -47,19 +63,40 @@ async def home(request: Request, sel_date: str = None):
 @app.get("/page/{category}", response_class=HTMLResponse)
 async def page(request: Request, category: str, sel_date: str = None):
     date_list = get_date_list(DATA_ROOT)
-    #date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
-    date = "20211215"
+    date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
     if sel_date is not None:
         date = sel_date
 
-    clustering_data = get_json_data(os.path.join(DATA_ROOT, f"{date}/clustering_{date}_{CATEGORIES_DICT[category]}.json"))
-    summary_data = get_json_data(os.path.join(DATA_ROOT, f"{date}/summary_{date}_{CATEGORIES_DICT[category]}.json"))
-    json_data = get_merge_data(clustering_data, summary_data)
+    clustering_file_name = os.path.join(DATA_ROOT, f"{date}/cluster_for_serving_{date}_{CATEGORIES_DICT[category]}.json")
+    clustering_data = None
+    if os.path.isfile(clustering_file_name):
+        clustering_data = get_json_data(clustering_file_name)
+
+    summary_file_name = os.path.join(DATA_ROOT, f"{date}/summary_{date}.json")
+    summary_data = None
+    if os.path.isfile(summary_file_name):
+        summary_data = get_json_data(summary_file_name)
+    
+    if clustering_data is not None and summary_data is not None:
+        json_data = get_merge_data(clustering_data, summary_data)
+    else:
+        return templates.TemplateResponse(
+            "page.html",
+            {
+                "request": request,
+                "err_msg": "데이터 생성 중입니다.",
+                "category_eng": category,
+                "category_kor": CATEGORIES_DICT[category],
+                "date_list": date_list,
+                "date": date,
+            }
+        )
 
     return templates.TemplateResponse(
         "page.html",
         {
             "request": request,
+            "err_msg": "",
             "data_root": DATA_ROOT,
             "date_list": date_list,
             "date": date,

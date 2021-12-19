@@ -46,7 +46,7 @@ def concat_json(data_dir, date):
         return
 
     result = []
-    for file in glob.glob(f"{dir_path}/*.json"):
+    for file in glob.glob(f"{dir_path}/cluster_for_summary*.json"):
         with open(file, "r") as f:
             result.extend(json.load(f))
     with open(save_file_name, "w") as f:
@@ -93,6 +93,7 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
     model.eval()
     
     pred_sentences = []
+    pred_ext_ids = []
 
     with torch.no_grad():
         for batch in tqdm(test_dl):
@@ -110,6 +111,7 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
                 eos_positions=batch["eos_positions"], 
                 k = TOPK,
             )
+            pred_ext_ids.extend(top_ext_ids.tolist())
             
             gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
 
@@ -126,7 +128,7 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
             summary_sent = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
             pred_sentences.extend(summary_sent)
 
-    return pred_sentences
+    return pred_sentences, pred_ext_ids
 
 
 def main(args):
@@ -157,7 +159,7 @@ def main(args):
         drop_last=False,
     )
 
-    pred_sents = predict(args, model, test_dl, tokenizer)
+    pred_sents, pred_ext_ids = predict(args, model, test_dl, tokenizer)
             
     print("Inference completed!")
     test_id = test_dataset.get_id_column()
@@ -173,6 +175,7 @@ def main(args):
             "id": id,
             "title": test_title[i],
             "category": test_category[i],
+            "extract_ids": pred_ext_ids[i].tolist(),
             "summary": pred_sents[i]
         })
 

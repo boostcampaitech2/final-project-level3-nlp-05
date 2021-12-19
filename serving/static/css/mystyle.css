@@ -28,3 +28,31 @@ footer {
     margin-left: 250px;
     margin-right: 250px;
 }
+
+.audio_component_big{
+    background-color: #F1F3F4;
+    width: 80%;
+    border-radius: 15px;
+    margin: 0 auto;
+}
+
+.audio_component_big audio {
+    width: 600px;
+}
+
+.audio_component{
+    background-color: #F1F3F4;
+    width: 300px;
+    margin: 0 auto;
+    border-radius: 15px;
+}
+
+.mt-10{
+    margin-top: 10px;
+}
+.ml-10{
+    margin-left: 10px;
+}
+.card-title {
+    margin-bottom: 0.25em;
+}

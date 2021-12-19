@@ -89,11 +89,11 @@ class CrawlingDaumNews:
         
         try:
             title = bsObject.select('#cSub .tit_view')[0].text
+            source = bsObject.select("em.info_cp img")[0].get('alt')
             abstractive = bsObject.select('.summary_view')
             abstractive = abstractive[0].get_text(strip=True, separator="\n").splitlines() if abstractive else []
-            article = [p.text for p in bsObject.select('#harmonyContainer > section p') if p.text != '']
+            article = [obj.text.strip() for obj in bsObject.select('#harmonyContainer > section p') if obj.text != '']
             article = self._corpus_to_sentence(article)
-            article = [{'index': idx, 'sentence': sentence} for idx, sentence in enumerate(article)]
             date = bsObject.select('.info_view .num_date')[0].text
             date_lst = date.replace('. ','-').split("-")
             date = "-".join(date_lst[:-1]) + " " + date_lst[-1]
@@ -104,23 +104,29 @@ class CrawlingDaumNews:
         
         info['category'] = category
         info['id'] = article_id
+        info['source'] = source
         info['publish_date'] = date
         info['extractive'] = [0] if len(article) > 0 else []
         info['abstractive'] = abstractive
         info['title'] = title
-        info['article'] = article
+        info['text'] = article
 
         return info
 
-    def _corpus_to_sentence(self,article):
-        splited_article = []
+    def _corpus_to_sentence(self, article):
+        splited_articles = []
+        i = 0
         for corpus in article:
+            paragraph = []
             sentences = corpus.split(". ")
             for sentence in sentences:
                 if sentence:
                     new_sentence = sentence + "." if sentence[-1] != "." and sentence[-1] == "다" else sentence
-                    splited_article.append(new_sentence)
-        return splited_article
+                    paragraph.append({"index": i, "sentence": new_sentence})
+                    i += 1
+            if paragraph:
+                splited_articles.append(paragraph)
+        return splited_articles
 
 def get_args():
     parser = argparse.ArgumentParser(description="crawling daum news titile.")
