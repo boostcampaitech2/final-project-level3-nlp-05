@@ -78,7 +78,8 @@ class SummaryDataset(Dataset):
             input_ids = input_ids[:self.max_seq_len-1] + [self.tokenizer.eos_token_id]
             attention_mask = [1.] * self.max_seq_len
             num_eos = input_ids.count(self.tokenizer.eos_token_id)
-            target_ids = target_ids[target_ids < num_eos]
+            if target_ids is not None:
+                target_ids = [id for id in target_ids if id < num_eos]
         else:
             attention_mask = [1.] * len(input_ids)
 
