@@ -103,6 +103,11 @@ def unfreeze_all(model: nn.Module) -> NoReturn:
 def cal_rouge():
     pass
 
+
+def np_sigmoid(x: np.ndarray):
+    return 1/(1+np.exp(-x))
+
+
 class PrintInfo:
     
     def __init__(self):
