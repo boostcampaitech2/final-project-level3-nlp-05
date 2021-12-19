@@ -25,9 +25,17 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-
-dict_categories = {"society": "사회","politics":"정치","economic":"경제","foreign":"국제", "culture": "문화","entertain":"연예", "sports":"스포츠","digital":"IT"}
-exclude = string.punctuation + '‘’·“”…◆\'△☆/★■\\▲▶\"▷◎▶▲◀☎◇↑☞『』☏‥◈▷【】🎧�◈-'
+dict_categories = {
+        "society": "사회",
+        "politics":"정치",
+        "economic":"경제",
+        "foreign":"국제", 
+        "culture": "문화",
+        "entertain":"연예", 
+        "sports":"스포츠",
+        "digital":"IT"
+    }
+exclude = '☆☏<]~$』^▲;"?=\'!@☎☞�:◎▷‘‥◀/◇】*,▶🎧_+>}’`%↑【#\\◈『△-·◆[”.…■{|&★“'
 parser = argparse.ArgumentParser()
 
 def get_args():
@@ -334,7 +342,10 @@ def main():
     vector = normalize(np.array(vector))
 
     # retrieve DBSCAN w/ optimal eps 
-    model = retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.1, grid_upper = 0.8)
+    if len(df) < 200:
+        model = DBSCAN(eps=0.5, min_samples=3, metric = "cosine") # Cosine Distance
+    else:
+        model = retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.3, grid_upper = 0.8)
     result = model.fit_predict(vector)
     df['cluster'] = result
 
