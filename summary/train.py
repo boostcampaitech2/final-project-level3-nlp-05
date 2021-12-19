@@ -88,8 +88,8 @@ def eval_loop(model, eval_dl) -> Dict[str, float]:
             gen_out = model.forward(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
 
             # weighted sum
-            ext_loss = n * ext_loss + size * ext_out.loss.item() / (n + size)
-            gen_loss = n * gen_loss + size * gen_out.loss.item() / (n + size)
+            ext_loss = (n * ext_loss + size * ext_out.loss.item()) / (n + size)
+            gen_loss = (n * gen_loss + size * gen_out.loss.item()) / (n + size)
             n += size
 
     return {
