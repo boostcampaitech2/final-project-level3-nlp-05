@@ -282,9 +282,9 @@ def generate_json(df, day, category, cluster_details, retrive_topk_clusters):
         dict_serving['origin_text'] = article['origin_text'].values[0]
         result_serving.append(dict_serving)
         
-    with open(f'../crawling/data/{day}/cluster_for_serving_{day}_{category}.json', 'w') as f:
+    with open(f'./data/{day}/cluster_for_serving_{day}_{category}.json', 'w') as f:
         json.dump(result_serving, f, ensure_ascii=False)
-    with open(f'../crawling/data/{day}/cluster_for_summary_{day}_{category}.json', 'w') as f:
+    with open(f'./data/{day}/cluster_for_summary_{day}_{category}.json', 'w') as f:
         json.dump(result_summary, f, ensure_ascii=False)
 
 
