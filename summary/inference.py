@@ -118,6 +118,7 @@ def inference(args):
     model.eval()
     
     final_sents = []
+    final_ext_ids = []
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
             input_ids = batch["input_ids"].clone().to(device)  # (B, L_src)
@@ -133,6 +134,7 @@ def inference(args):
                 eos_positions=batch["eos_positions"], 
                 k = TOPK,
             )
+            final_ext_ids.extend(top_ext_ids)
             
             gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
 
@@ -162,6 +164,7 @@ def inference(args):
             "id": id,
             "title": test_title[i],
             "category": test_category[i],
+            "extract_ids": final_ext_ids[i].tolist(),
             "summary": final_sents[i]
         })
 
