@@ -215,7 +215,7 @@ def main(args):
             
             if args.do_predict:
                 print("=" * 10 + "Epoch " + str(epoch+1) + " predict has started! " + "=" * 10)
-                pred = predict(args, model, eval_dl, tokenizer)
+                pred, _ = predict(args, model, eval_dl, tokenizer)
                 with open(os.path.join(args.output_dir, f"pred_epoch_{epoch}.json"), 'w', encoding="utf-8") as f:
                     json.dump(pred, f, ensure_ascii=False)
 
@@ -228,9 +228,9 @@ def main(args):
 
     if args.do_predict:
         print("=" * 10 + "The final prediction loop has started!" + "=" * 10)
-        pred = predict(args, model, eval_dl, tokenizer)
+        pred_sents, _ = predict(args, model, eval_dl, tokenizer)
         with open(os.path.join(args.output_dir, f"pred_final.json"), 'w', encoding="utf-8") as f:
-            json.dump(pred, f, ensure_ascii=False)
+            json.dump(pred_sents, f, ensure_ascii=False)
 
 
 if __name__ == '__main__':
