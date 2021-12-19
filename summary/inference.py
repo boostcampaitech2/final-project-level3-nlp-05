@@ -112,6 +112,7 @@ def inference(args):
             # 일단 무조건 3개 이상 나오고, top 3개만 자른다고 가정
             TOPK = 3
             top_ext_ids = torch.argsort(ext_out.logits, dim=-1, descending=True)[:, :TOPK]  # (B, TOPK)
+            top_ext_ids, _ = torch.sort(top_ext_ids)
 
             gen_batch = extract_sentences(input_ids, eos_positions, top_ext_ids, tokenizer)
 
