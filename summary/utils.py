@@ -55,7 +55,7 @@ def collate_fn(
             else:
                 outputs[key] = None
         PAD = pad_token_idx if key in pad_keys else 0
-        PAD = -1 if key == "answers" else PAD
+        PAD = -1 if key in "answers" else PAD
         
         if outputs[key] is not None:
             outputs[key] = torch.nn.utils.rnn.pad_sequence(outputs[key], padding_value=PAD, batch_first=True)

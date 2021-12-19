@@ -2,7 +2,7 @@ import os
 import json
 import argparse
 from datetime import date, timedelta
-from unicodedata import category
+from unicodedata import category, decimal
 
 import pandas as pd
 
@@ -17,6 +17,23 @@ from utils import collate_fn
 
 from tqdm import tqdm
 import glob
+
+
+def get_top_k_sentences(logits: torch.FloatTensor, eos_positions: torch.LongTensor, k: int = 3):
+    returned_tensor = []
+    top_ext_ids = torch.argsort(logits, dim=-1, descending=True)
+    num_sentences = torch.sum(torch.gt(eos_positions, 0), dim=-1, dtype=torch.long)
+
+    for i in range(len(top_ext_ids)):
+        top_ext_id = top_ext_ids[i]
+        top_ext_id = top_ext_id[top_ext_id < num_sentences[i]]
+        top_ext_id = top_ext_id[:k]
+        top_k, _ = torch.sort(top_ext_id)
+        returned_tensor.append(top_k.unsqueeze(0))
+    
+    returned_tensor = torch.cat(returned_tensor, dim=0)
+
+    return returned_tensor
 
 
 def concat_json(data_dir, date):
@@ -103,18 +120,21 @@ def inference(args):
     final_sents = []
     with torch.no_grad():
         for batch in tqdm(test_dataloader):
-            input_ids = batch["input_ids"].to(device)  # (B, L_src)
-            attention_mask = batch["attention_mask"].to(device)  # (B, L_src)
-            eos_positions = batch["eos_positions"].to(device)
+            input_ids = batch["input_ids"].clone().to(device)  # (B, L_src)
+            attention_mask = batch["attention_mask"].clone().to(device)  # (B, L_src)
+            # eos_positions = batch["eos_positions"].clone().to(device)
 
             ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask)
 
             # 일단 무조건 3개 이상 나오고, top 3개만 자른다고 가정
             TOPK = 3
-            top_ext_ids = torch.argsort(ext_out.logits, dim=-1, descending=True)[:, :TOPK]  # (B, TOPK)
-            top_ext_ids, _ = torch.sort(top_ext_ids)
-
-            gen_batch = extract_sentences(input_ids, eos_positions, top_ext_ids, tokenizer)
+            top_ext_ids = get_top_k_sentences(
+                logits=ext_out.logits.clone().detach().cpu(), 
+                eos_positions=batch["eos_positions"], 
+                k = TOPK,
+            )
+            
+            gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
 
             summary_ids = model.generate(
                 input_ids=gen_batch["input_ids"].to(device), 
