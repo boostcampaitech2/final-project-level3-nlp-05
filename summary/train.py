@@ -1,6 +1,7 @@
 import pickle
 import timeit
 from typing import Tuple, Dict
+import argparse
 
 import numpy as np
 
@@ -40,7 +41,7 @@ def train_step(model, batch) -> Tuple[torch.FloatTensor, Dict[str, float]]:
 
     return total_loss, {"ext_loss": ext_out.loss.item(), "gen_loss": gen_out.loss.item()}
 
-def train_loop(model, train_dl, optimizer, epoch: int = -1, prev_step: int = 0) -> int:
+def train_loop(model, train_dl, eval_dl, optimizer, epoch: int = -1, prev_step: int = 0) -> int:
     step = prev_step
     model.train()
     optimizer.zero_grad()
@@ -61,7 +62,7 @@ def train_loop(model, train_dl, optimizer, epoch: int = -1, prev_step: int = 0) 
             wandb.log(train_metrics)
 
         if (step+1) % eval_steps == 0:
-            eval_metrics = eval_loop()
+            eval_metrics = eval_loop(model, eval_dl)
             eval_metrics = {("eval/" + k): v for k, v in eval_metrics.items()}
             eval_metrics["step"] = step
             wandb.log(eval_metrics)
@@ -77,8 +78,6 @@ def eval_loop(model, eval_dl) -> Dict[str, float]:
 
     with torch.no_grad():
         for batch in tqdm(eval_dl):
-            size = len(input_ids)
-
             input_ids = batch["input_ids"].cuda()  # (B, L_src)
             attention_mask = batch["attention_mask"].cuda()  # (B, L_src)
             answers = batch["answers"].cuda() if "answers" in batch.keys() else None # 추출요약 (B, 3)
@@ -88,6 +87,7 @@ def eval_loop(model, eval_dl) -> Dict[str, float]:
             gen_out = model.forward(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
 
             # weighted sum
+            size = len(input_ids)
             ext_loss = (n * ext_loss + size * ext_out.loss.item()) / (n + size)
             gen_loss = (n * gen_loss + size * gen_out.loss.item()) / (n + size)
             n += size
@@ -98,9 +98,12 @@ def eval_loop(model, eval_dl) -> Dict[str, float]:
     }
 
 
-def main():
+def main(args):
 
-    wandb.init(project="easybart")
+    wandb.init(
+        project="easybart",
+        entity="this-is-real",
+        name=args.run_name)
 
     # load config, tokenizer, model
     MODEL_NAME = "gogamza/kobart-summarization"
@@ -110,7 +113,7 @@ def main():
 
     # load dataset, dataloader
     train_path = "/opt/ml/dataset/Training/train.parquet"
-    eval_path = "/opt/ml/dataset/Training/train.parquet"
+    eval_path = "/opt/ml/dataset/Validation/valid.parquet"
 
     train_dataset = SummaryDataset(train_path, tokenizer, is_train=True)
     eval_dataset = SummaryDataset(eval_path, tokenizer, is_train=True)
@@ -148,7 +151,7 @@ def main():
 
     for epoch in range(EPOCH):
         print("=" * 10 + "Epoch " + str(epoch) + " has started!" + "=" * 10)
-        total_steps = train_loop(model, train_dataloader, optimizer, total_steps)
+        total_steps = train_loop(model, train_dataloader, eval_dataloader, optimizer, total_steps)
 
         # epoch이 끝나면 누적 loss 데이터 전체 저장
         with open(f"./ext_losses_ep_{epoch}.pkl", "wb") as f:
@@ -160,4 +163,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="Train model.")
+    parser.add_argument("--run_name", default="run", type=str, help="wandb run name")
+    args = parser.parse_args()
+    main(args)
