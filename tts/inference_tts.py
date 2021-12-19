@@ -23,14 +23,14 @@ import argparse
 parser = argparse.ArgumentParser()
 
 dict_categories = {
-        "economic":"경제",
         "society": "사회",
         "politics":"정치",
-        "digital":"IT",
+        "economic":"경제",
         "foreign":"국제", 
         "culture": "문화",
         "entertain":"연예", 
-        "sports":"스포츠", 
+        "sports":"스포츠",
+        "digital":"IT"
     }
 
 def get_args():
@@ -64,7 +64,7 @@ def get_args():
     
     parser.add_argument('--date', 
         default = (date.today() - timedelta(1)).strftime("%Y%m%d"), # '20211216'
-        type=int,
+        type=str,
         help="date of news summary")
 
     args = parser.parse_args()
@@ -101,14 +101,17 @@ def generate_conjunction(text2mel_model, text2mel_processor, mel2wav_model, samp
         sf.write(f"./data/conjunction/{category}_0.wav", audio, sample_rate, "PCM_16")
     
 
-def text_fill(date):
+def opening_statement(date, category = False):
     """ retrieve opening statement for specific date """
     year,month,day = date[:4], date[4:6], date[6:]
-    opening = f'안녕하세요 {year}년 {month}월 {day}일자 핵심뉴스 요약입니다.'
+    if not category:
+        opening = f'안녕하세요 {year}년 {month}월 {day}일자 핵심뉴스 요약입니다.'
+    else:
+        opening = f'{dict_categories[category]} 뉴스 요약입니다.'
     return opening 
 
 
-def audio_drop(summary, date, id, text2mel_model, text2mel_processor, mel2wav_model, sample_rate, split=False):
+def audio_drop(summary, date, id, text2mel_model, text2mel_processor, mel2wav_model, sample_rate, split=False, category = False):
     """ audio drop using text2mel & mel2wav """
     input_ids = text2mel_processor.text_to_sequence(summary)
     if text2mel_model == 'fastspeech2':
@@ -127,10 +130,14 @@ def audio_drop(summary, date, id, text2mel_model, text2mel_processor, mel2wav_mo
     )
     audio = mel2wav_model.inference(mel_output)[0, :, 0]
     if not split:
-        sf.write(f'./data/{date}/tts/voice_files/{id}.wav', audio, sample_rate, "PCM_16")
+        if not category:
+            sf.write(f'./data/{date}/tts/voice_files/{id}.wav', audio, sample_rate, "PCM_16")
+        else: 
+            sf.write(f'./data/{date}/tts/category/{id}.wav', audio, sample_rate, "PCM_16")
+
     else :
-        if not os.path.isdir(f"./data/{args.date}/tts/voice_files/temp"):
-            os.makedirs(f"./data/{args.date}/tts/voice_files/temp")
+        if not os.path.isdir(f"./data/{date}/tts/voice_files/temp"):
+            os.makedirs(f"./data/{date}/tts/voice_files/temp")
         sf.write(f'./data/{date}/tts/voice_files/temp/{id}.wav', audio, sample_rate, "PCM_16")
 
 ##############################################################################
@@ -157,28 +164,24 @@ def main():
 
 
     # load json args.date for the name
-    with open(f"./data/{args.date}/summary.json", "r", encoding="utf-8") as f:
-        data = json.load(f)
-        
-    # change to honorific
-    for idx, summary in data['summary'].items():
-        result = ''
-        text_split = summary.split()
+    data = pd.read_json(f"./data/{args.date}/summary_{args.date}.json")
+
+    order = [1,2,3]*8
+    data['new_id'] = ''
+
+    # change to honorific, create new_id -> e.g. politics_1
+    for i, row in data.iterrows():
+        text_split = row['summary'].split()
         if honorific_token_check(text_split[-1]): # check if honorific
             text_split[-1] = change_text(text_split[-1])
-            result += " ".join(text_split)  
-            data['summary'][idx] = result
-
+        row['summary'] = " ".join(text_split)
+        row['new_id'] = list(dict_categories.keys())[int(row['id'].split('-')[0]) - 1] + '_' + str(order[i])
     # check dir
     if not os.path.isdir(f"./data/{args.date}/tts/voice_files/"):
         os.makedirs(f"./data/{args.date}/tts/voice_files/")
     
-    # audio drop opening statement
-    opening = text_fill(args.date)
-    audio_drop(opening, args.date, 'opening_',text2mel_model, text2mel_processor, mb_melgan, args.sample_rate)
-    
     # split summary text if larger than split_length
-    for idx,summary in tqdm(data['summary'].items()):
+    for idx, summary in tqdm(enumerate(data['summary'])):
         if len(summary) > args.split_length :
             for i in range((len(summary)//args.split_length)+1):
                 if args.split_length*(i+1) < len(summary):
@@ -188,7 +191,7 @@ def main():
                 audio_drop(
                     summary = summary_split, 
                     date = args.date, 
-                    id = data['id'][idx]+f"-{i}", 
+                    id = data['new_id'][idx]+f"-{i}",  # politics_1
                     text2mel_model = text2mel_model, 
                     text2mel_processor = text2mel_processor, 
                     mel2wav_model = mb_melgan, 
@@ -199,73 +202,91 @@ def main():
             path = sorted(os.listdir(f"./data/{args.date}/tts/voice_files/temp"))
             split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/temp',path), format="wav"))
             split_overlay = sum(split_sounds)
-            split_overlay.export(f"../data/{args.date}/tts/voice_files/{data['id'][idx]}.wav", format="wav")
+            split_overlay.export(f"./data/{args.date}/tts/voice_files/{data['new_id'][idx]}.wav", format="wav")
             shutil.rmtree(f"./data/{args.date}/tts/voice_files/temp")
 
         else :
             audio_drop(
                 summary = summary, 
                 date = args.date, 
-                id = data['id'][idx],
+                id = data['new_id'][idx],
                 text2mel_model = text2mel_model, 
                 text2mel_processor = text2mel_processor, 
                 mel2wav_model = mb_melgan, 
                 sample_rate = args.sample_rate
             )
 
-        print('###### Summary of article - ',data['id'][idx], '######')
+        print('###### Summary of article - ',data['new_id'][idx], '######')
         print('Summary Input...')
         print(summary,'\n','-'*100)
-    
-    
 
-    # make ordered list of wav files
-    ordered_list = ['opening_.wav']
-    file_list = os.listdir(f"./data/{args.date}/tts/voice_files/") + os.listdir(f'./data/conjunction')
-    for category in dict_categories.keys() :
-        for audio in sorted(file_list):
-            if category in audio:
-                ordered_list.append(audio)
+    if not os.path.isdir(f"./data/{args.date}/tts/category/"):
+        os.makedirs(f"./data/{args.date}/tts/category/")
     
-    # concat split audios
-    split_sounds = []
-    for path in ordered_list:
-        if '-' in path:
-            split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/',path), format="wav"))
-            split_overlay = sum(split_sounds)
-            split_overlay.export(f"./data/{args.date}/tts/voice_files/{args.date}.wav", format="wav")
-    # 1 2 3 4-1 4-2 5 6 7-1 7-2 8 9
-    # concat wav files with corresponding silence
-    sounds = []
     silence_long = AudioSegment.silent(duration=args.pause_long)
     silence_short= AudioSegment.silent(duration=args.pause_short)
-    
-    for i, path in enumerate(ordered_list):
-        if path.split('_')[1] == '0.wav':
-            sounds.append(AudioSegment.from_file(os.path.join(f'./data/conjunction/',path), format="wav"))
-            sounds.append(silence_short)
-        else:
-            sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/',path), format="wav"))
-            if path == 'opening_.wav':
-                sounds.append(silence_short)
-            else :
-                # 여기 바꿔야함 (노아님)
-                current_category = path.split('_')[0]
-                if i < len(ordered_list)-1:
-                    next_category = ordered_list[i + 1].split('_')[0]
-                    if current_category != next_category:
-                        sounds.append(silence_short)
-                    else :
-                        sounds.append(silence_long)
 
-    overlay = sum(sounds)
-    overlay.export(f"./data/{args.date}/tts/final_{args.date}.wav", format="wav")
+    for key in dict_categories.keys():
+        split_sounds = []
+        path = [file for file in os.listdir(f"./data/{args.date}/tts/voice_files/") if key in file]
+        path = sorted(path)
+        for ind, file in enumerate(path):
+            split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/',file), format="wav"))
+            if ind < len(path)-1 :
+                split_sounds.append(silence_long)
+        split_overlay = sum(split_sounds)
+        split_overlay.export(f"./data/{args.date}/tts/category/{key}.wav", format="wav")
+
+        category_opening = opening_statement(args.date, category = key)
+        audio_drop(category_opening, args.date, f'opening_{key}' ,text2mel_model, text2mel_processor, mb_melgan, args.sample_rate, category = True)
+        
+        # category-wise final mp3 -> e.g.> final_politics.mp3
+        split_sounds = []
+        split_sounds.append(AudioSegment.from_file(f'./data/{args.date}/tts/category/opening_{key}.wav', format="wav"))
+        split_sounds.append(silence_short)
+        split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/category/',f'{key}.wav'), format="wav"))
+        split_overlay = sum(split_sounds)
+        split_overlay.export(f"./data/{args.date}/tts/final_{key}.mp3", format="mp3")
+
+
+    # final audio files
+    opening = opening_statement(args.date)
+    audio_drop(opening, args.date, 'opening_',text2mel_model, text2mel_processor, mb_melgan, args.sample_rate, category = True)
+
+    ordered_list = []
+    file_list = os.listdir(f"./data/{args.date}/tts/category/") + os.listdir(f'./data/conjunction')
+    for category in dict_categories.keys(): 
+        for audio in sorted(file_list, reverse = True): # politics_0.mp3, politics.mp3 order
+            if category in audio:
+                ordered_list.append(audio)
+
+    # concat split audios
+    split_sounds = []
+    split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/category/','opening_.wav'), format="wav"))
+    split_sounds.append(silence_short)
+
+    for ind, path in enumerate(ordered_list): #  category_0.wav -> data/conjunction, category.wav -> data/arg.date/tts/category/
+        path_root = path.split('.')[0]
+        
+        if path_root[-1] == '0':
+            split_sounds.append(AudioSegment.from_file(f'./data/conjunction/{path}', format="wav"))
+            split_sounds.append(silence_short)
+
+        elif ind == len(ordered_list) - 1 : # no pause for final audio
+            split_sounds.append(AudioSegment.from_file(f'./data/{args.date}/tts/category/{path}', format="wav"))
+    
+        else:
+            split_sounds.append(AudioSegment.from_file(f'./data/{args.date}/tts/category/{path}', format="wav"))
+            split_sounds.append(silence_short)
+        
+    overlay = sum(split_sounds)
+    overlay.export(f"./data/{args.date}/tts/final_{args.date}.mp3", format="mp3")
     print('#'*5, f"Final audio files generated at ./data/{args.date}/tts/ folder",'#'*5)
 
     execution_time = timeit.default_timer() - start
     print(f"Program Executed in {execution_time:.2f}s", '\n')
 
+
 ##############################################################################
 if __name__ == "__main__":
     main()
-
