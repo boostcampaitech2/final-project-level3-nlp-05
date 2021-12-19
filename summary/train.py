@@ -1,13 +1,14 @@
 import pickle
 import timeit
-from typing import Tuple, Dict
+from typing import Tuple, Dict, NoReturn
 import argparse
 
 import numpy as np
 
 import torch
-from torch import optim
+from torch.cuda import is_available
 import torch.nn as nn
+import torch.optim as optim
 
 import transformers
 from transformers import PreTrainedTokenizer, PreTrainedTokenizerFast, BartForConditionalGeneration, PretrainedConfig
@@ -15,24 +16,20 @@ from transformers import BartTokenizerFast
 from transformers.models.bart.configuration_bart import BartConfig
 
 from model import BartSummaryModelV2
-from utils import collate_fn, freeze, unfreeze_all, PrintInfo
+from utils import set_all_seeds, collate_fn, freeze, unfreeze_all, PrintInfo, str2bool
 from dataset import SummaryDataset
 from torch.utils.data import DataLoader
 
 from tqdm.auto import tqdm
 
-import wandb
+alpha = 0.5
 
-backward_steps = 64
-eval_steps = 10000
+def train_step(model, batch, device) -> Tuple[torch.FloatTensor, Dict[str, float]]:
 
-def train_step(model, batch) -> Tuple[torch.FloatTensor, Dict[str, float]]:
-    alpha = 0.5
-
-    input_ids = batch["input_ids"].cuda()  # (B, L_src)
-    attention_mask = batch["attention_mask"].cuda()  # (B, L_src)
-    answers = batch["answers"].cuda() # 추출요약 (B, 3)
-    labels = batch["labels"].cuda()   # 생성요약 (B, L_tgt)
+    input_ids = batch["input_ids"].to(device)  # (B, L_src)
+    attention_mask = batch["attention_mask"].to(device)  # (B, L_src)
+    answers = batch["answers"].to(device) # 추출요약 (B, 3)
+    labels = batch["labels"].to(device) # 생성요약 (B, L_tgt)
 
     ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask, labels=answers)
     gen_out = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
@@ -41,35 +38,64 @@ def train_step(model, batch) -> Tuple[torch.FloatTensor, Dict[str, float]]:
 
     return total_loss, {"ext_loss": ext_out.loss.item(), "gen_loss": gen_out.loss.item()}
 
-def train_loop(model, train_dl, eval_dl, optimizer, epoch: int = -1, prev_step: int = 0) -> int:
+def train_loop(args, model, train_dl, eval_dl, optimizer, prev_step: int = 0) -> int:
+    
     step = prev_step
+
     model.train()
     optimizer.zero_grad()
     ext_losses = []
     gen_losses = []
 
-    for batch in tqdm(train_dl):
-        loss, returned_dict = train_step(model, batch)
-        ext_losses.append(returned_dict["ext_loss"])
-        gen_losses.append(returned_dict["gen_loss"])
-        loss.backward()
-        step += 1
+    if args.use_wandb:
+        import wandb
 
-        if (step+1) % backward_steps == 0:
-            optimizer.step()
-            optimizer.zero_grad()
-            train_metrics = {"train/ext_loss": np.mean(ext_losses), "train/gen_loss": np.mean(gen_losses), "step": step}
-            wandb.log(train_metrics)
+    if args.do_train:
 
-        if (step+1) % eval_steps == 0:
-            eval_metrics = eval_loop(model, eval_dl)
-            eval_metrics = {("eval/" + k): v for k, v in eval_metrics.items()}
-            eval_metrics["step"] = step
-            wandb.log(eval_metrics)
+        for batch in tqdm(train_dl):
+
+            model.train()
+            device = torch.device("cpu") if args.no_cuda or not torch.cuda.is_available() else torch.device("cuda")
+
+            loss, returned_dict = train_step(model, batch, device)
+            loss.backward()
+            ext_losses.append(returned_dict["ext_loss"])
+            gen_losses.append(returned_dict["gen_loss"])
+            step += 1
+
+            if (step+1) % args.gradient_accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+
+                train_metrics = {
+                    "train/ext_loss": np.mean(ext_losses), 
+                    "train/gen_loss": np.mean(gen_losses), 
+                    "step": step
+                }
+                if args.use_wandb:
+                    wandb.log(train_metrics)
+
+                ext_losses = []
+                gen_losses = []
+
+            if args.do_eval and (step+1) % args.eval_steps == 0:
+                eval(args, model, eval_dl, step)
 
     return step
 
-def eval_loop(model, eval_dl) -> Dict[str, float]:
+
+def eval(args, model, eval_dl, step) -> Dict[str, float]:
+    device = torch.device("cpu") if args.no_cuda or not torch.cuda.is_available() else torch.device("cuda")
+    eval_metrics = eval_loop(model, eval_dl, device)
+    eval_metrics = {("eval/" + k): v for k, v in eval_metrics.items()}
+    eval_metrics["step"] = step
+    if args.use_wandb:
+        import wandb
+        wandb.log(eval_metrics)
+    return eval_metrics
+
+
+def eval_loop(model, eval_dl, device) -> Dict[str, float]:
     model.eval()
 
     ext_loss = 0.0
@@ -78,10 +104,10 @@ def eval_loop(model, eval_dl) -> Dict[str, float]:
 
     with torch.no_grad():
         for batch in tqdm(eval_dl):
-            input_ids = batch["input_ids"].cuda()  # (B, L_src)
-            attention_mask = batch["attention_mask"].cuda()  # (B, L_src)
-            answers = batch["answers"].cuda() if "answers" in batch.keys() else None # 추출요약 (B, 3)
-            labels = batch["labels"].cuda() if "labels" in batch.keys() else None
+            input_ids = batch["input_ids"].to(device)  # (B, L_src)
+            attention_mask = batch["attention_mask"].to(device)  # (B, L_src)
+            answers = batch["answers"].to(device) if "answers" in batch.keys() else None # 추출요약 (B, 3)
+            labels = batch["labels"].to(device) if "labels" in batch.keys() else None
 
             ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask, labels=answers)
             gen_out = model.forward(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
@@ -100,10 +126,16 @@ def eval_loop(model, eval_dl) -> Dict[str, float]:
 
 def main(args):
 
-    wandb.init(
-        project="easybart",
-        entity="this-is-real",
-        name=args.run_name)
+    if args.use_wandb:
+        import wandb
+        wandb.init(
+            project=args.wandb_project,
+            entity=args.wandb_entity,
+            name=args.wandb_run_name,
+        )
+
+    if args.seed:
+        set_all_seeds(args.seed, verbose=True)
 
     # load config, tokenizer, model
     MODEL_NAME = "gogamza/kobart-summarization"
@@ -115,55 +147,87 @@ def main(args):
     train_path = "/opt/ml/dataset/Training/train.parquet"
     eval_path = "/opt/ml/dataset/Validation/valid.parquet"
 
-    train_dataset = SummaryDataset(train_path, tokenizer, is_train=True)
-    eval_dataset = SummaryDataset(eval_path, tokenizer, is_train=True)
+    train_dataset = SummaryDataset(train_path, tokenizer, is_train=True) if args.do_train else None
+    eval_dataset = SummaryDataset(eval_path, tokenizer, is_train=True) if args.do_eval else None
 
-    print(f"train_dataset length: {len(train_dataset)}, eval_dataset length: {len(eval_dataset)}")
+    if train_dataset is not None:
+        print(f"train_dataset length: {len(train_dataset)}")
+    if eval_dataset is not None:
+        print(f"eval_dataset length: {len(eval_dataset)}")
 
-    TRAIN_BATCH_SIZE = 4
-    EVAL_BATCH_SIZE = 8
-
-    train_dataloader = DataLoader(train_dataset, 
-        TRAIN_BATCH_SIZE, 
+    train_dl = DataLoader(
+        train_dataset, 
+        args.per_device_train_batch_size, 
         shuffle=True, 
-        collate_fn=lambda x: collate_fn(x, pad_token_idx=tokenizer.pad_token_id)
-    )
-    eval_dataloader = DataLoader(eval_dataset, 
-        EVAL_BATCH_SIZE, 
+        collate_fn=lambda x: collate_fn(x, pad_token_idx=tokenizer.pad_token_id),
+    ) if args.do_train else None
+
+    eval_dl = DataLoader(
+        train_dataset if eval_dataset is None else eval_dataset, 
+        args.per_device_eval_batch_size, 
         shuffle=False, 
-        collate_fn=lambda x: collate_fn(x, pad_token_idx=tokenizer.pad_token_id)
-    )
+        collate_fn=lambda x: collate_fn(x, pad_token_idx=tokenizer.pad_token_id),
+    ) if args.do_eval else None
 
     # optimizer
     # TODO: LR scheduler
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-5, weight_decay=1e-2)
+    optimizer = optim.AdamW(
+        model.parameters(), 
+        lr=args.learning_rate, 
+        weight_decay=args.weight_decay,
+        betas=[args.adam_beta1, args.adam_beta2],
+    )
 
     # train loop
-    model.cuda()
+    if not args.no_cuda:
+        device = torch.device("cpu") if args.no_cuda or not torch.cuda.is_available() else torch.device("cuda")
+        model.to(device)
     model.train()
-
-    EPOCH = 16
-    ext_losses = []
-    gen_losses = []
 
     total_steps = 0
     optimizer.zero_grad()
 
-    for epoch in range(EPOCH):
-        print("=" * 10 + "Epoch " + str(epoch) + " has started!" + "=" * 10)
-        total_steps = train_loop(model, train_dataloader, eval_dataloader, optimizer, total_steps)
+    if args.do_train:
+        for epoch in range(int(args.num_train_epochs)):
+            print("=" * 10 + "Epoch " + str(epoch+1) + " has started!" + "=" * 10)
+            total_steps = train_loop(args, model, train_dl, eval_dl, optimizer, total_steps)
 
-        # epoch이 끝나면 누적 loss 데이터 전체 저장
-        with open(f"./ext_losses_ep_{epoch}.pkl", "wb") as f:
-            pickle.dump(ext_losses, f)
-        with open(f"./gen_losses_ep_{epoch}.pkl", "wb") as f:
-            pickle.dump(gen_losses, f)
-
-    model.save_pretrained("./saved")
+            # save the trained model at the end of every epoch
+            model.save_pretrained(args.output_dir)
+    
+    if args.do_eval:
+        eval(args, model, eval_dl, total_steps)
 
 
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description="Train model.")
-    parser.add_argument("--run_name", default="run", type=str, help="wandb run name")
+
+    parser.add_argument("--do_train", default=True, type=str2bool, help="run train loop if True")
+    parser.add_argument("--do_eval", default=True, type=str2bool, help="run evaluation loop if True")
+    parser.add_argument("--do_predict", default=True, type=str2bool, help="run predict loop if True")
+
+    parser.add_argument("--output_dir", default="./saved", type=str, help="path to save the trained model")
+    
+    parser.add_argument("--per_device_train_batch_size", default=4, type=int, help="train batch size per device (default: 4)")
+    parser.add_argument("--per_device_eval_batch_size", default=8, type=int, help="train batch size per device (default: 8)")
+    parser.add_argument("--num_train_epochs", default=1.0, type=float, help="num train epochs")
+    parser.add_argument("--eval_steps", default=500, type=int, help="num train epochs")
+    parser.add_argument("--gradient_accumulation_steps", default=1, type=int, help="num gradient accumulation steps")
+
+    parser.add_argument("--no_cuda", default=False, type=str2bool, help="run on cpu if True")
+    parser.add_argument("--seed", type=int, help="random seed number")
+
+    parser.add_argument("--learning_rate", default=1e-05, type=float, help="learning rate")
+    parser.add_argument("--weight_decay", default=0.0, type=float, help="weigth decay in AdamW optimizer")
+    parser.add_argument("--adam_beta1", default=0.9, type=float, help="beta1 in AdamW optimizer")
+    parser.add_argument("--adam_beta2", default=0.999, type=float, help="beta2 in AdamW optimizer")
+
+    parser.add_argument("--use_wandb", default=True, type=str2bool, help="use wandb if True")
+    parser.add_argument("--wandb_run_name", default="run", type=str, help="wandb run name")
+    parser.add_argument("--wandb_project", default="easybart", type=str, help="wandb project name")
+    parser.add_argument("--wandb_entity", default="this-is-real", type=str, help="wandb entity name")
+    
     args = parser.parse_args()
+
     main(args)

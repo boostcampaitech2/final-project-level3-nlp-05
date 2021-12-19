@@ -1,9 +1,37 @@
+import random
 from collections import defaultdict
 from typing import Union, List, Dict, NoReturn
 import timeit
+from argparse import ArgumentTypeError
+
+import numpy as np
 
 import torch
 import torch.nn as nn
+
+
+def set_all_seeds(seed, verbose=False):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    random.seed(seed)
+
+    if verbose:
+        print("All random seeds set to", seed)
+
+
+def str2bool(v): 
+    if isinstance(v, bool): 
+        return v 
+    if v.lower() in ('yes', 'true', 't', 'y', '1'): 
+        return True 
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'): 
+        return False 
+    else: 
+        raise ArgumentTypeError('Boolean value expected.')
 
 def collate_fn(
     batched_samples: List[Dict[str, List[int]]],
