@@ -1,9 +1,37 @@
+import random
 from collections import defaultdict
 from typing import Union, List, Dict, NoReturn
 import timeit
+from argparse import ArgumentTypeError
+
+import numpy as np
 
 import torch
 import torch.nn as nn
+
+
+def set_all_seeds(seed, verbose=False):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    random.seed(seed)
+
+    if verbose:
+        print("All random seeds set to", seed)
+
+
+def str2bool(v): 
+    if isinstance(v, bool): 
+        return v 
+    if v.lower() in ('yes', 'true', 't', 'y', '1'): 
+        return True 
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'): 
+        return False 
+    else: 
+        raise ArgumentTypeError('Boolean value expected.')
 
 def collate_fn(
     batched_samples: List[Dict[str, List[int]]],
@@ -20,12 +48,18 @@ def collate_fn(
 
     for key in keys:
         for sample in batched_samples:
-            outputs[key].append(torch.tensor(sample[key]))
+            if sample[key] is not None:
+                if not isinstance(sample[key], torch.Tensor):
+                    sample[key] = torch.tensor(sample[key])
+                outputs[key].append(sample[key])
+            else:
+                outputs[key] = None
         PAD = pad_token_idx if key in pad_keys else 0
-        PAD = -1 if key == "answers" else PAD
+        PAD = -1 if key in "answers" else PAD
         
-        outputs[key] = torch.nn.utils.rnn.pad_sequence(outputs[key], padding_value=PAD, batch_first=True)
-    
+        if outputs[key] is not None:
+            outputs[key] = torch.nn.utils.rnn.pad_sequence(outputs[key], padding_value=PAD, batch_first=True)
+
     return dict(outputs)
 
 def freeze(
