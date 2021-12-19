@@ -2,7 +2,7 @@ import os
 import json
 import argparse
 from datetime import date, timedelta
-from unicodedata import category, decimal
+from typing import Optional, List
 
 import pandas as pd
 
@@ -77,26 +77,71 @@ def extract_sentences(
         attention_mask.append(torch.ones(len(sentences)))
 
     gen_batch_inputs = torch.nn.utils.rnn.pad_sequence(gen_batch_inputs, padding_value=PAD, batch_first=True)
-    attention_mask = torch.nn.utils.rnn.pad_sequence(attention_mask, padding_value=PAD, batch_first=True)
+    attention_mask = torch.nn.utils.rnn.pad_sequence(attention_mask, padding_value=0, batch_first=True)
+
     return {
         "input_ids": gen_batch_inputs,
         "attention_mask": attention_mask,
     }
 
-def inference(args):
-    # device
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+def predict(args, model, test_dl, tokenizer) -> List[str]:
+
+    device = torch.device("cpu") if args.no_cuda or not torch.cuda.is_available() else torch.device("cuda")
+
+    model.to(device)
+    model.eval()
+    
+    pred_sentences = []
+    pred_ext_ids = []
+
+    with torch.no_grad():
+        for batch in tqdm(test_dl):
+            input_ids = batch["input_ids"].clone().to(device)  # (B, L_src)
+            attention_mask = batch["attention_mask"].clone().to(device)  # (B, L_src)
+            # eos_positions = batch["eos_positions"].clone().to(device)
+
+            ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask)
+
+            # TODO: use different k values
+            # TODO: implement different criteria (such as probability)!
+            TOPK = 3
+            top_ext_ids = get_top_k_sentences(
+                logits=ext_out.logits.clone().detach().cpu(), 
+                eos_positions=batch["eos_positions"], 
+                k = TOPK,
+            )
+            pred_ext_ids.extend(top_ext_ids.tolist())
+            
+            gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
+
+            summary_ids = model.generate(
+                input_ids=gen_batch["input_ids"].to(device), 
+                attention_mask=gen_batch["attention_mask"].to(device), 
+                num_beams=args.num_beams, 
+                max_length=args.max_length, 
+                min_length=args.min_length,
+                repetition_penalty=args.repetition_penalty,
+                no_repeat_ngram_size=args.no_repeat_ngram_size,
+            )
+            
+            summary_sent = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
+            pred_sentences.extend(summary_sent)
+
+    return pred_sentences, pred_ext_ids
+
+
+def main(args):
     # tokenizer, model
     tokenizer = BartTokenizerFast.from_pretrained(args.tokenizer)
-    model = BartSummaryModelV2.from_pretrained(args.model_dir)  # 일단
+    model = BartSummaryModelV2.from_pretrained(args.model_dir)
     
     # get data
     data_dir = os.path.join(args.data_dir, args.date)
 
     save_file_name = f"summary_{args.date}.json"
     if os.path.isfile(os.path.join(data_dir, save_file_name)):
-        print(f'{save_file_name} is already generated.')
+        print(f'{save_file_name} has been already generated.')
         return
         
     file_name = f"cluster_for_summary_{args.date}.json"
@@ -104,56 +149,22 @@ def inference(args):
 
     test_dataset = SummaryDataset(test_file, tokenizer)
     
-    print("test_dataset length:", len(test_dataset))
+    print(f"test dataset length: {len(test_dataset)}")
     
-    BATCH_SIZE = 8
-    test_dataloader = DataLoader(test_dataset, 
-        BATCH_SIZE, 
+    test_dl = DataLoader(
+        test_dataset, 
+        args.per_device_eval_batch_size, 
         shuffle=False, 
         collate_fn=lambda x: collate_fn(x, pad_token_idx=tokenizer.pad_token_id, sort_by_length=False),
-        drop_last=False
+        drop_last=False,
     )
 
-    model.to(device)
-    model.eval()
-    
-    final_sents = []
-    final_ext_ids = []
-    with torch.no_grad():
-        for batch in tqdm(test_dataloader):
-            input_ids = batch["input_ids"].clone().to(device)  # (B, L_src)
-            attention_mask = batch["attention_mask"].clone().to(device)  # (B, L_src)
-            # eos_positions = batch["eos_positions"].clone().to(device)
-
-            ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask)
-
-            # 일단 무조건 3개 이상 나오고, top 3개만 자른다고 가정
-            TOPK = 3
-            top_ext_ids = get_top_k_sentences(
-                logits=ext_out.logits.clone().detach().cpu(), 
-                eos_positions=batch["eos_positions"], 
-                k = TOPK,
-            )
-            final_ext_ids.extend(top_ext_ids)
-            
-            gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
-
-            summary_ids = model.generate(
-                input_ids=gen_batch["input_ids"].to(device), 
-                attention_mask=gen_batch["attention_mask"].to(device), 
-                num_beams=8, 
-                max_length=128, 
-                min_length=4,
-                repetition_penalty=1.2,
-                no_repeat_ngram_size=3,
-            )  # args로 받기
-            summary_sent = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
-            final_sents.extend(summary_sent)
+    pred_sents, pred_ext_ids = predict(args, model, test_dl, tokenizer)
             
     print("Inference completed!")
     test_id = test_dataset.get_id_column()
     
-    assert len(test_id) == len(final_sents)
+    assert len(test_id) == len(pred_sents), "length of test_id and pred_sents do not match"
     
     test_title = test_dataset.get_title_column()
     test_category = test_dataset.get_category_column()
@@ -164,15 +175,15 @@ def inference(args):
             "id": id,
             "title": test_title[i],
             "category": test_category[i],
-            "extract_ids": final_ext_ids[i].tolist(),
-            "summary": final_sents[i]
+            "extract_ids": pred_ext_ids[i].tolist(),
+            "summary": pred_sents[i]
         })
 
     # output.to_json('./summary.json')  # json 으로 저장
     with open(os.path.join(data_dir, save_file_name), 'w', encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False)
 
-    
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
@@ -180,7 +191,16 @@ if __name__ == "__main__":
     parser.add_argument('--tokenizer', type=str, default="gogamza/kobart-summarization")
     parser.add_argument('--data_dir', type=str, default="/opt/ml/dataset/Test")
     parser.add_argument('--date', type=str, default=(date.today() - timedelta(1)).strftime("%Y%m%d")) # 어제날짜
+
+    parser.add_argument("--per_device_eval_batch_size", default=8, type=int, help="inference batch size per device (default: 8)")
+
+    parser.add_argument('--num_beams', type=int, default=8)
+    parser.add_argument('--max_length', type=int, default=128)
+    parser.add_argument('--min_length', type=Optional[int])
+    parser.add_argument('--repetition_penalty', type=float, default=1.0)
+    parser.add_argument('--no_repeat_ngram_size', type=Optional[int])
+
     args = parser.parse_args()
     
     concat_json(args.data_dir, args.date)
-    inference(args)
+    main(args)
