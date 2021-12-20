@@ -13,7 +13,7 @@ from transformers import BartTokenizerFast, BartConfig
 
 from model import BartSummaryModelV2
 from dataset import SummaryDataset, TestDataset
-from utils import collate_fn
+from utils import collate_fn, str2bool
 
 from tqdm import tqdm
 import glob
@@ -42,7 +42,7 @@ def concat_json(data_dir, date):
 
     save_file_name = f"{dir_path}/cluster_for_summary_{date}.json"
     if os.path.isfile(save_file_name):
-        print(f'{save_file_name} is already generated.')
+        print(f'{save_file_name} has been already generated.')
         return
 
     result = []
@@ -105,11 +105,10 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
 
             # TODO: use different k values
             # TODO: implement different criteria (such as probability)!
-            TOPK = 3
             top_ext_ids = get_top_k_sentences(
                 logits=ext_out.logits.clone().detach().cpu(), 
                 eos_positions=batch["eos_positions"], 
-                k = TOPK,
+                k = args.num_extraction,
             )
             pred_ext_ids.extend(top_ext_ids.tolist())
             
@@ -175,13 +174,13 @@ def main(args):
             "id": id,
             "title": test_title[i],
             "category": test_category[i],
-            "extract_ids": pred_ext_ids[i].tolist(),
+            "extract_ids": pred_ext_ids[i],
             "summary": pred_sents[i]
         })
 
     # output.to_json('./summary.json')  # json 으로 저장
     with open(os.path.join(data_dir, save_file_name), 'w', encoding="utf-8") as f:
-        json.dump(output, f, ensure_ascii=False)
+        json.dump(output, f, ensure_ascii=False, indent=4)
 
 
 if __name__ == "__main__":
@@ -199,6 +198,10 @@ if __name__ == "__main__":
     parser.add_argument('--min_length', type=Optional[int])
     parser.add_argument('--repetition_penalty', type=float, default=1.0)
     parser.add_argument('--no_repeat_ngram_size', type=Optional[int])
+
+    parser.add_argument("--no_cuda", default=False, type=str2bool, help="run on cpu if True")
+
+    parser.add_argument("--num_extraction", type=int, default = 3)
 
     args = parser.parse_args()
     
