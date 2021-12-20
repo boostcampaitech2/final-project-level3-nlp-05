@@ -16,7 +16,7 @@ from transformers.models.bart.configuration_bart import BartConfig
 
 from model import BartSummaryModelV2
 from inference import predict
-from utils import set_all_seeds, collate_fn, freeze, unfreeze_all, PrintInfo, str2bool, np_sigmoid
+from utils import set_all_seeds, collate_fn, freeze, unfreeze_all, np_sigmoid
 from dataset import SummaryDataset
 from torch.utils.data import DataLoader
 
@@ -237,9 +237,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Train model.")
 
-    parser.add_argument("--do_train", default=True, type=str2bool, help="run train loop if True")
-    parser.add_argument("--do_eval", default=True, type=str2bool, help="run evaluation loop if True")
-    parser.add_argument("--do_predict", default=True, type=str2bool, help="run predict loop if True")
+    parser.add_argument("--do_train", action='store_true')
+    parser.add_argument("--do_eval", action='store_true')
+    parser.add_argument("--do_predict", action='store_true')
 
     parser.add_argument("--output_dir", default="./saved", type=str, help="path to save the trained model")
     
@@ -249,7 +249,7 @@ if __name__ == '__main__':
     parser.add_argument("--eval_steps", default=500, type=int, help="num train epochs")
     parser.add_argument("--gradient_accumulation_steps", default=1, type=int, help="num gradient accumulation steps")
 
-    parser.add_argument("--no_cuda", default=False, type=str2bool, help="run on cpu if True")
+    parser.add_argument("--no_cuda", action='store_true')
     parser.add_argument("--seed", type=int, help="random seed number")
 
     parser.add_argument("--learning_rate", default=1e-05, type=float, help="learning rate")
@@ -260,11 +260,11 @@ if __name__ == '__main__':
     # for predict loop
     parser.add_argument('--num_beams', type=int, default=8)
     parser.add_argument('--max_length', type=int, default=128)
-    parser.add_argument('--min_length', type=Optional[int])
+    parser.add_argument('--min_length', type=int)
     parser.add_argument('--repetition_penalty', type=float, default=1.0)
-    parser.add_argument('--no_repeat_ngram_size', type=Optional[int])
+    parser.add_argument('--no_repeat_ngram_size', type=int)
 
-    parser.add_argument("--use_wandb", default=True, type=str2bool, help="use wandb if True")
+    parser.add_argument("--use_wandb", action='store_true')
     parser.add_argument("--wandb_run_name", default="run", type=str, help="wandb run name")
     parser.add_argument("--wandb_project", default="easybart", type=str, help="wandb project name")
     parser.add_argument("--wandb_entity", default="this-is-real", type=str, help="wandb entity name")
