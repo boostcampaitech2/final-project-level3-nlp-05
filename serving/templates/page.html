@@ -54,7 +54,7 @@
                         <div class="audio_component_big text-center">
                             <audio controls="controls" style="vertical-align: middle;">
                                 <source
-                                    src="{{ url_for('static', path='/data/souljaboy_gohard.mp3') }}"
+                                    src="{{ url_for('static', path='/data/'+date+'/tts/final_'+category_eng+'.mp3') }}"
                                     type="audio/mpeg"/>
                                 Your browser does not support the audio element.
                             </audio>
@@ -108,7 +108,15 @@
                                         <h4>원본 기사</h4>
                                         <div style="padding:0px 20px;">
                                             {% for article in data.article %}
-                                                <p class="text-dark">{{article}}</p>
+                                                <p class="text-dark">
+                                                {% for sentence in article%}
+                                                    {%if sentence['index'] in data.highlights%}
+                                                        <mark>{{sentence['sentence']}}</mark>
+                                                    {%else%}
+                                                        {{sentence['sentence']}}
+                                                    {%endif%}
+                                                {% endfor %}
+                                             </p>
                                             {% endfor %}
                                         </div>
                                     </div>

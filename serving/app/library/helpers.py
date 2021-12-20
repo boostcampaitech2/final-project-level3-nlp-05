@@ -27,21 +27,15 @@ def get_merge_data(clustering_data, summary_data):
     for id in id_list:
         clustering = [data for data in clustering_data if data["id"] == id][0]
         summary = [data for data in summary_data if data["id"] == id][0]
-
-        article = []
-        for texts in clustering["origin_text"]:
-            paragraph = []
-            for text in texts:
-                paragraph.append(text["sentence"])
-            article.append(" ".join(paragraph))
         merge_data.append({
             "id": id,
             "category": clustering["category"],
             "source": clustering["source"],
             "title": clustering["origin_title"],
-            "article": article,
+            "article": clustering["origin_text"],
             "top_features": clustering["top_features"],
             "summary": summary["summary"],
-            "audio_file": "souljaboy_gohard.mp3"
+            "audio_file": "souljaboy_gohard.mp3",
+            "highlights":summary['extract_ids'],
         })
     return merge_data

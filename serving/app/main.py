@@ -29,24 +29,40 @@ CATEGORIES_DICT = {
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, sel_date: str = None):
-    date_list = get_date_list(DATA_ROOT)
+    static_audio_path = os.path.join(Path(os.getcwd()), "static/data")
+
+    date_list = get_date_list(static_audio_path)
     date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
     if sel_date is not None:
-        date = sel_date    
-
+        date = sel_date  
+    
+    categories = []
+    temp = []
+    # 카테고리 2개 가져오기
+    for i,category in enumerate(CATEGORIES_DICT):
+        temp.append(category)
+        if i%2 == 1 :
+            categories.append(temp)
+            temp = []
+    err_msg = ''
+    if date not in date_list:
+        err_msg = '데이터 생성 중입니다.'
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "date_list": date_list,
             "date": date,
-            "data_root": DATA_ROOT
+            "data_root": DATA_ROOT,
+            "categories": categories,
+            "catgory_dict":CATEGORIES_DICT,
+            "err_msg":err_msg,
         }
     )   
 
 @app.get("/custom", response_class=HTMLResponse)
 async def home(request: Request, sel_date: str = None):
-    date_list = get_date_list(DATA_ROOT)
+    date_list = get_date_list('static/data')
     date = (datetime.date.today() - datetime.timedelta(1)).strftime("%Y%m%d")
     if sel_date is not None:
         date = sel_date    
@@ -71,6 +87,7 @@ async def page(request: Request, category: str, sel_date: str = None):
     clustering_data = None
     if os.path.isfile(clustering_file_name):
         clustering_data = get_json_data(clustering_file_name)
+
 
     summary_file_name = os.path.join(DATA_ROOT, f"{date}/summary_{date}.json")
     summary_data = None

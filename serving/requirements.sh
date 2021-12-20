@@ -1,0 +1,9 @@
+pip install requests==2.26.0
+pip install fastapi==0.70.0
+pip install uvicorn==0.15.0
+pip install gunicorn==20.0.4
+pip install python-dotenv==0.19.1
+pip install aiofiles==0.7.0
+pip install python-multipart==0.0.5
+pip install jinja2==3.0.2
+pip install pytest==6.2.5

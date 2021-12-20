@@ -28,7 +28,8 @@ do
     python ./clustering/retriever.py --date $date --category $category
 done
 
-# 3. summarization
+# # 3. summarization
 echo ""
 echo "summary..."
-python ./summary/inference.py --data_dir ./data --date $date
+python ./summary/inference.py --data_dir ./data --date $date --repetition_penalty 2.0 --model_dir ./summary/saved
+
