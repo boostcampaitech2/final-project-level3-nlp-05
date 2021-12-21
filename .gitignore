@@ -8,3 +8,4 @@ airflow/logs/
 .ipynb_checkpoints/
 wandb/
 venv/
+nohup.out
