@@ -62,7 +62,7 @@ def train_loop(args, model, train_dl, eval_dl, optimizer, prev_step: int = 0) ->
             loss.backward()
             ext_losses.append(returned_dict["ext_loss"])
             gen_losses.append(returned_dict["gen_loss"])
-            all_logits.append(returned_dict["ext_logits"].detach().cpu().numpy())
+            all_logits.append(returned_dict["ext_logits"].detach().cpu().numpy().flatten())
             step += 1
 
             if (step+1) % args.gradient_accumulation_steps == 0:
@@ -126,7 +126,7 @@ def eval_loop(model, eval_dl, device) -> Dict[str, float]:
 
             ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask, labels=answers)
             gen_out = model.forward(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-            all_logits.append(ext_out.logits.cpu().numpy())
+            all_logits.append(ext_out.logits.cpu().numpy().flatten())
 
             # weighted sum
             size = len(input_ids)

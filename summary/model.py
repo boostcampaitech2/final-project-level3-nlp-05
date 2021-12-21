@@ -228,14 +228,14 @@ class BartSummaryModelV2(BartForConditionalGeneration):
             _hidden = hidden_states[i][input_ids[i].eq(self.config.eos_token_id)]
             for j in range(_hidden.size(0)):
                 sentence_representation[i, j, :] = _hidden[j, :]
-        logits = self.classification_head(sentence_representation).squeeze(-1)
+        logits = self.classification_head(sentence_representation).squeeze(-1) # [B, L]
         
         loss = None
         if labels is not None:
             assert len(input_ids) == len(labels)
             # Create one-hot vectors indicating target sentences
             one_hot = torch.zeros((B, MAX_NUM)).to(device)
-            for i in range(one_hot.size(0)):
+            for i in range(B):
                 one_hot[i,:].index_fill_(0, labels[i][labels[i] >= 0], 1.0)
             labels = one_hot.clone()
 
