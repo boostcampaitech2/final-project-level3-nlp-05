@@ -8,6 +8,8 @@ python summary/train.py --do_train --do_eval --do_predict --use_wandb --per_devi
 ```
 python inference.py --model_dir ./saved --date 20211217
 ```
+- 요약문 생성에 쓰일 json 파일과 생성 결과가 저장된 json 파일을 덮어쓰려면 `--overwrite` 추가
+
 
 # 우수 사례
 
