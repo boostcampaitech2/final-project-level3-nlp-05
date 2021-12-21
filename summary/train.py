@@ -258,11 +258,13 @@ if __name__ == '__main__':
     parser.add_argument("--adam_beta2", default=0.999, type=float, help="beta2 in AdamW optimizer")
 
     # for predict loop
+    parser.add_argument('--generate_method', type=str, default="beam", choices=["greedy", "beam", "sampling"])
     parser.add_argument('--num_beams', type=int, default=8)
     parser.add_argument('--max_length', type=int, default=128)
     parser.add_argument('--min_length', type=int)
     parser.add_argument('--repetition_penalty', type=float, default=1.0)
     parser.add_argument('--no_repeat_ngram_size', type=int)
+    parser.add_argument("--top_k", type=int, default = 3)
 
     parser.add_argument("--use_wandb", action='store_true')
     parser.add_argument("--wandb_run_name", default="run", type=str, help="wandb run name")
