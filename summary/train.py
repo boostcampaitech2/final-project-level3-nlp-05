@@ -169,7 +169,7 @@ def main(args):
     eval_path  = "/opt/ml/dataset/Validation/valid.parquet"
 
     train_dataset = SummaryDataset(train_path, tokenizer, is_train=True) if args.do_train else None
-    eval_dataset  = SummaryDataset(eval_path, tokenizer, is_train=True) if args.do_eval else None
+    eval_dataset  = SummaryDataset(eval_path, tokenizer, is_train=True) if args.do_eval or args.do_predict else None
 
     if train_dataset is not None:
         print(f"train_dataset length: {len(train_dataset)}")
@@ -188,7 +188,7 @@ def main(args):
         args.per_device_eval_batch_size, 
         shuffle=False, 
         collate_fn=lambda x: collate_fn(x, pad_token_idx=tokenizer.pad_token_id),
-    ) if args.do_eval else None
+    ) if args.do_eval or args.do_predict else None
 
     # optimizer
     # TODO: LR scheduler
@@ -212,16 +212,18 @@ def main(args):
         for epoch in range(int(args.num_train_epochs)):
             print("=" * 10 + "Epoch " + str(epoch+1) + " has started! " + "=" * 10)
             total_steps = train_loop(args, model, train_dl, eval_dl, optimizer, total_steps)
+
+            # save the trained model at the end of every epoch
+            model.save_pretrained(os.path.join(args.output_dir, f"epoch_{epoch}"))
             
             if args.do_predict:
                 print("=" * 10 + "Epoch " + str(epoch+1) + " predict has started! " + "=" * 10)
                 pred, _ = predict(args, model, eval_dl, tokenizer)
                 with open(os.path.join(args.output_dir, f"pred_epoch_{epoch}.json"), 'w', encoding="utf-8") as f:
-                    json.dump(pred, f, ensure_ascii=False)
-
-            # save the trained model at the end of every epoch
-            model.save_pretrained(args.output_dir)
+                    json.dump(pred, f, ensure_ascii=False)        
     
+    # At the end of the whole training,
+    # the final evaluation and prediction loop will run!
     if args.do_eval:
         print("=" * 10 + "The final evaluation loop has started!" + "=" * 10)
         eval(args, model, eval_dl, total_steps)
