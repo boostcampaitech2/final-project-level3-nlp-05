@@ -108,11 +108,13 @@ class SummaryDataset(Dataset):
     def get_title_column(self):
         return self.raw_data['title'].tolist()
 
-    def _to_list_str(self, text):
+    def _to_list_str(self, pharagraphs):
         result = []
-        for item in text:
-            if len(item) < 1: continue
-            result.append(item[0]["sentence"])
+        for paragraph in pharagraphs:
+            if len(paragraph) < 1: 
+                # no sentence in paragraph
+                continue
+            result.extend([sentence["sentence"] for sentence in paragraph])
         return result
 
     def _reorganize_text(self, raw_data):
