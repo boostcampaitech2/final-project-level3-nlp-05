@@ -169,7 +169,7 @@ def main(args):
     eval_path  = "/opt/ml/dataset/Validation/valid.parquet"
 
     train_dataset = SummaryDataset(train_path, tokenizer, is_train=True) if args.do_train else None
-    eval_dataset  = SummaryDataset(eval_path, tokenizer, is_train=True) if args.do_eval else None
+    eval_dataset  = SummaryDataset(eval_path, tokenizer, is_train=True) if args.do_eval or args.do_predict else None
 
     if train_dataset is not None:
         print(f"train_dataset length: {len(train_dataset)}")
@@ -188,7 +188,7 @@ def main(args):
         args.per_device_eval_batch_size, 
         shuffle=False, 
         collate_fn=lambda x: collate_fn(x, pad_token_idx=tokenizer.pad_token_id),
-    ) if args.do_eval else None
+    ) if args.do_eval or args.do_predict else None
 
     # optimizer
     # TODO: LR scheduler
@@ -212,16 +212,18 @@ def main(args):
         for epoch in range(int(args.num_train_epochs)):
             print("=" * 10 + "Epoch " + str(epoch+1) + " has started! " + "=" * 10)
             total_steps = train_loop(args, model, train_dl, eval_dl, optimizer, total_steps)
+
+            # save the trained model at the end of every epoch
+            model.save_pretrained(os.path.join(args.output_dir, f"epoch_{epoch}"))
             
             if args.do_predict:
                 print("=" * 10 + "Epoch " + str(epoch+1) + " predict has started! " + "=" * 10)
                 pred, _ = predict(args, model, eval_dl, tokenizer)
                 with open(os.path.join(args.output_dir, f"pred_epoch_{epoch}.json"), 'w', encoding="utf-8") as f:
-                    json.dump(pred, f, ensure_ascii=False)
-
-            # save the trained model at the end of every epoch
-            model.save_pretrained(args.output_dir)
+                    json.dump(pred, f, ensure_ascii=False)        
     
+    # At the end of the whole training,
+    # the final evaluation and prediction loop will run!
     if args.do_eval:
         print("=" * 10 + "The final evaluation loop has started!" + "=" * 10)
         eval(args, model, eval_dl, total_steps)
@@ -258,11 +260,13 @@ if __name__ == '__main__':
     parser.add_argument("--adam_beta2", default=0.999, type=float, help="beta2 in AdamW optimizer")
 
     # for predict loop
+    parser.add_argument('--generate_method', type=str, default="beam", choices=["greedy", "beam", "sampling"])
     parser.add_argument('--num_beams', type=int, default=8)
     parser.add_argument('--max_length', type=int, default=128)
     parser.add_argument('--min_length', type=int)
     parser.add_argument('--repetition_penalty', type=float, default=1.0)
     parser.add_argument('--no_repeat_ngram_size', type=int)
+    parser.add_argument("--top_k", type=int, default = 3)
 
     parser.add_argument("--use_wandb", action='store_true')
     parser.add_argument("--wandb_run_name", default="run", type=str, help="wandb run name")
