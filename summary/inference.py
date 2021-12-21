@@ -40,12 +40,12 @@ def get_top_k_sentences(logits: torch.FloatTensor, eos_positions: torch.LongTens
     return returned_tensor
 
 
-def concat_json(data_dir, date):
+def concat_json(data_dir, date, overwrite: bool = False):
     '''combine files for each category into one whole json file'''
     dir_path = os.path.join(data_dir, date)
 
     save_file_name = f"{dir_path}/cluster_for_summary_{date}.json"
-    if os.path.isfile(save_file_name):
+    if os.path.isfile(save_file_name) and not overwrite:
         print(f'{save_file_name} has been already generated.')
         return
 
@@ -112,20 +112,42 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
             top_ext_ids = get_top_k_sentences(
                 logits=ext_out.logits.clone().detach().cpu(), 
                 eos_positions=batch["eos_positions"], 
-                k = args.num_extraction,
+                k = args.top_k,
             )
-            
             gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
 
-            summary_ids = model.generate(
-                input_ids=gen_batch["input_ids"].to(device), 
-                attention_mask=gen_batch["attention_mask"].to(device), 
-                num_beams=args.num_beams, 
-                max_length=args.max_length, 
-                min_length=args.min_length,
-                repetition_penalty=args.repetition_penalty,
-                no_repeat_ngram_size=args.no_repeat_ngram_size,
-            )
+            summary_ids = None
+            if args.generate_method == "greedy":
+                summary_ids = model.generate(
+                    input_ids=gen_batch["input_ids"].to(device), 
+                    attention_mask=gen_batch["attention_mask"].to(device),  
+                    max_length=args.max_length, 
+                    min_length=args.min_length,
+                    repetition_penalty=args.repetition_penalty,
+                    no_repeat_ngram_size=args.no_repeat_ngram_size,
+                )
+            elif args.generate_method == "beam":
+                summary_ids = model.generate(
+                    input_ids=gen_batch["input_ids"].to(device), 
+                    attention_mask=gen_batch["attention_mask"].to(device), 
+                    num_beams=args.num_beams, 
+                    max_length=args.max_length, 
+                    min_length=args.min_length,
+                    repetition_penalty=args.repetition_penalty,
+                    no_repeat_ngram_size=args.no_repeat_ngram_size,
+                )
+            elif args.generate_method == "sampling":
+                summary_ids = model.generate(
+                    input_ids=gen_batch["input_ids"].to(device), 
+                    attention_mask=gen_batch["attention_mask"].to(device), 
+                    do_sample=True,
+                    max_length=args.max_length, 
+                    min_length=args.min_length,
+                    repetition_penalty=args.repetition_penalty,
+                    no_repeat_ngram_size=args.no_repeat_ngram_size,
+                    top_k=50,
+                    top_p=0.92,
+                )
             
             summary_sent = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
             pred_sentences.extend(summary_sent)
@@ -150,7 +172,7 @@ def main(args):
     data_dir = os.path.join(args.data_dir, args.date)
 
     save_file_name = f"summary_{args.date}.json"
-    if os.path.isfile(os.path.join(data_dir, save_file_name)):
+    if os.path.isfile(os.path.join(data_dir, save_file_name)) and not args.overwrite:
         print(f'{save_file_name} has been already generated.')
         return
         
@@ -201,20 +223,22 @@ if __name__ == "__main__":
     parser.add_argument('--tokenizer', type=str, default="gogamza/kobart-summarization")
     parser.add_argument('--data_dir', type=str, default="/opt/ml/dataset/Test")
     parser.add_argument('--date', type=str, default=(date.today() - timedelta(1)).strftime("%Y%m%d")) # 어제날짜
+    parser.add_argument('--overwrite', action='store_true')
 
     parser.add_argument("--per_device_eval_batch_size", default=8, type=int, help="inference batch size per device (default: 8)")
 
+    parser.add_argument('--generate_method', type=str, default="beam", choices=["greedy", "beam", "sampling"])
     parser.add_argument('--num_beams', type=int, default=8)
     parser.add_argument('--max_length', type=int, default=128)
-    parser.add_argument('--min_length', type=Optional[int])
-    parser.add_argument('--repetition_penalty', type=float, default=1.0)
-    parser.add_argument('--no_repeat_ngram_size', type=Optional[int])
+    parser.add_argument('--min_length', type=int, default=4)
+    parser.add_argument('--repetition_penalty', type=float, default=1.2)
+    parser.add_argument('--no_repeat_ngram_size', type=int, default=3)
 
-    parser.add_argument("--no_cuda", default=False, type=str2bool, help="run on cpu if True")
+    parser.add_argument("--no_cuda", action='store_true', help="run on cpu if True")
 
-    parser.add_argument("--num_extraction", type=int, default = 3)
+    parser.add_argument("--top_k", type=int, default = 3)
 
     args = parser.parse_args()
-    
-    concat_json(args.data_dir, args.date)
+
+    concat_json(args.data_dir, args.date, args.overwrite)
     main(args)
