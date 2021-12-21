@@ -108,9 +108,9 @@ class SummaryDataset(Dataset):
     def get_title_column(self):
         return self.raw_data['title'].tolist()
 
-    def _to_list_str(self, pharagraphs):
+    def _to_list_str(self, paragraphs):
         result = []
-        for paragraph in pharagraphs:
+        for paragraph in paragraphs:
             if len(paragraph) < 1: 
                 # no sentence in paragraph
                 continue
