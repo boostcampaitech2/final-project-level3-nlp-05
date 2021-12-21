@@ -29,6 +29,10 @@ def get_top_k_sentences(logits: torch.FloatTensor, eos_positions: torch.LongTens
         top_ext_id = top_ext_id[top_ext_id < num_sentences[i]]
         top_ext_id = top_ext_id[:k]
         top_k, _ = torch.sort(top_ext_id)
+
+        padding = torch.tensor([-1] * k)
+        top_k = torch.cat([top_k, padding])[:k]
+
         returned_tensor.append(top_k.unsqueeze(0))
     
     returned_tensor = torch.cat(returned_tensor, dim=0)
@@ -110,7 +114,6 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
                 eos_positions=batch["eos_positions"], 
                 k = args.num_extraction,
             )
-            pred_ext_ids.extend(top_ext_ids.tolist())
             
             gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
 
@@ -126,6 +129,14 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
             
             summary_sent = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
             pred_sentences.extend(summary_sent)
+
+            # remove invalid ids for highlighting
+            top_ext_ids = top_ext_ids.tolist()
+            valid_ext_ids = []
+            for i in range(len(top_ext_ids)):
+                valid_ext_ids.append([id for id in top_ext_ids[i] if id >= 0])
+
+            pred_ext_ids.extend(valid_ext_ids)
 
     return pred_sentences, pred_ext_ids
 
