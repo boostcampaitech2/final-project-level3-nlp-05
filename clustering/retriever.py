@@ -5,7 +5,6 @@ import timeit
 
 import os
 from glob import glob
-from numpy.core.fromnumeric import shape
 
 import pandas as pd
 import numpy as np
@@ -34,7 +33,8 @@ dict_categories = {
         "entertain":"연예", 
         "sports":"스포츠",
         "digital":"IT"
-    }   
+    }
+    
 
 parser = argparse.ArgumentParser() 
 
@@ -71,12 +71,6 @@ def get_args():
         type=int,
         help="Number of news articles to display per cluster"
     )
-    parser.add_argument(
-        "--grid_numbers",
-        default=20,
-        type=int,
-        help="Size of grid search increments"
-    )
     args = parser.parse_args()
     return args
 
@@ -93,9 +87,10 @@ def filter_sentence_articles(df):
 def preprocess(sent):
     """ preprocessing before vectorizing """
     #《》 【 】［］「」 ｢｣  ≪≫〈〉 -> () 
-    punct_mapping = {'〜':'~',"‘": "'", "´": "'", "°": "", "™": "tm", "√": " 제곱근 ", "×": "x", "²": "2",
+    punct_mapping = {'〜':'~',"‘": "'", "´": "'", "°": "", "™": "tm", "√": " 제곱근 ", "×": "x", "m²": "제곱미터",
                     "—": "-", "–": "-", "’": "'", "_": "-", "`": "'", '“': '"', '”': '"', '“': '"', '∞': 'infinity',
-                    'θ': 'theta', '÷': '/', 'α': 'alpha', '•': '.', 'à': 'a', '−': '-', 'β': 'beta', '∅': '', '³': '3', 'π': 'pi'}
+                    'θ': 'theta', '÷': '/', 'α': 'alpha', '•': '.', 'à': 'a', '−': '-', 'β': 'beta', '∅': '',
+                     '³': '3', 'π': 'pi','·':',','%':'퍼센트'}
     parantheses = '《【{［[「｢≪〈〉》】］]}」｣≫'
     for p in punct_mapping:
         sent = sent.replace(p, punct_mapping[p])
@@ -103,9 +98,13 @@ def preprocess(sent):
         if p in parantheses[:len(parantheses)//2+1]: sent = sent.replace(p, '(')
         else: sent = sent.replace(p, ')')
 
-    exclude = '☆☏$^▲;\"?\'!@☎☞�:◎▷‥◀/◇*▶▼🎧_+`%↑#\\◈※△-·◆…■|&★'
+    exclude = '☆☏$^▲;\"?\'!@☎☞�:◎▷‥◀/◇*▶▼🎧_+`%↑#\\◈※△-ll◆…■|&★'
     for p in exclude:
         sent = sent.replace(p, '')
+
+    # total =''
+    # for chr in sent:
+    #     if chr not in exclude or chr == '.': total += chr
     return sent
 
 
@@ -165,7 +164,7 @@ def json_to_df(json_path, idx, date, category):
     return res_df, idx
 
 
-def retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.2, grid_upper = 0.7, penalty_rate = 0.1):
+def retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.2, grid_upper = 0.8):
     """ retrieve DBSCAN model with optimal epsilon value by grid search """
     eps_grid = np.linspace(grid_lower, grid_upper, num = grid_numbers)
     eps_best = eps_grid[0]
@@ -186,8 +185,7 @@ def retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.2, grid_u
         percentage_discarded = unlabeled_counts/len(df)
 
         # scoring guideline -> (percentage undiscarded + silhouette score)
-        overall_score =  silhouette_score - penalty_rate*percentage_discarded 
-        # 50% 데이터 버리면 0.5*0.05 = 0.025 정도의 페널티 -> 20% 
+        overall_score = (1 - percentage_discarded) + (silhouette_score)
 
         if overall_score > overall_score_max:
             silhouette_score_optimal = silhouette_score
@@ -195,8 +193,8 @@ def retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.2, grid_u
             overall_score_max = overall_score
             eps_best = eps
             model_best = model
-        # print(f'eps: {eps:.2f}, overall_score: {overall_score:.2f}, silhouette_score: {silhouette_score:.2f}, percentage_discarded: , {percentage_discarded:.2f}')
-    print(f'"Epsilon:", {eps_best:.2f}, Silhouette score:", {silhouette_score_optimal:.2f}, Proportion of News Discarded {percentage_discarded_optimal:.2f}')
+
+    print(f'"Epsilon:", {eps_best}, Silhouette score:", {silhouette_score_optimal:.2f}, Proportion of News Discarded {percentage_discarded_optimal:.2f}')
     return model_best
 
 
@@ -227,7 +225,7 @@ def retrieve_featured_article(df, centers, dict):
     feature_article = []
     feature_id = []
 
-    for i in range(1, len(centers)-1):
+    for i in range(1,len(centers)-1):
         temp = dict[i][0].to_dict()
         dist = []
 
@@ -259,7 +257,7 @@ def get_cluster_details_dbscan(centers, feature_names, feature_title, feature_ar
     cluster_details = {}
     
     #개별 군집별로 iteration하면서 핵심단어, 그 단어의 중심 위치 상대값, 대상 제목 입력
-    for cluster_num in range(1, len(centers)-1): # -1, 0 제외
+    for cluster_num in range(1,len(centers)-1): # -1, 0 제외
         # 개별 군집별 정보를 담을 데이터 초기화. 
         cluster_details[cluster_num] = {}
         cluster_details[cluster_num]['cluster'] = cluster_num
@@ -365,7 +363,7 @@ def main():
     if len(df) < 200:
         model = DBSCAN(eps=0.5, min_samples=3, metric = "cosine") # Cosine Distance
     else:
-        model = retrieve_optimal_eps(df, vector, grid_numbers = args.grid_numbers, grid_lower = 0.3, grid_upper = 0.7)
+        model = retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.3, grid_upper = 0.8)
     result = model.fit_predict(vector)
     df['cluster'] = result
 
