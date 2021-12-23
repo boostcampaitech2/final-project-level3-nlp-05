@@ -223,12 +223,12 @@ class BartSummaryModelV2(BartForConditionalGeneration):
         MAX_NUM = torch.max(input_ids.eq(self.config.eos_token_id).sum(1))
 
         hidden_states = outputs[0]  # last hidden state
-        sentence_representation = torch.zeros((B, MAX_NUM, self.config.d_model)).to(device)
+        sentence_representation = torch.zeros((B, MAX_NUM, self.config.d_model)).to(device) # [B, MAX_NUM, D]
         for i in range(B):
             _hidden = hidden_states[i][input_ids[i].eq(self.config.eos_token_id)]
-            for j in range(_hidden.size(0)):
-                sentence_representation[i, j, :] = _hidden[j, :]
-        logits = self.classification_head(sentence_representation).squeeze(-1) # [B, L]
+            l = _hidden.size(0)
+            sentence_representation[i, 0:l] = _hidden
+        logits = self.classification_head(sentence_representation).squeeze(-1) # [B, MAX_NUM]
         
         loss = None
         if labels is not None:
@@ -328,7 +328,6 @@ class BartSummaryModelV3(BartForConditionalGeneration):
             _logit = all_logits[i][input_ids[i].eq(self.config.eos_token_id)]
             l = _logit.size(0)
             logits[i, 0:l] = _logit
-        logits = logits.squeeze(-1) # [B, MAX_NUM]
         
         loss = None
         if labels is not None:
