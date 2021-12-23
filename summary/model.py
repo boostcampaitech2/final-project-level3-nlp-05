@@ -259,7 +259,7 @@ class BartSummaryModelV2(BartForConditionalGeneration):
         )
 
 
-class BartSummaryModelV3(BartForConditionalGeneration):
+class BartSummaryModelV3(BartSummaryModelV2):
     def __init__(self, config: BartConfig, **kwargs):
         super(BartSummaryModelV3, self).__init__(config, **kwargs)
         self.classification_head = LSTMClassificationHead(
