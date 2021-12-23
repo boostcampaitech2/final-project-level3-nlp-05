@@ -14,7 +14,7 @@ from transformers import BartTokenizerFast
 from transformers.models.bart.configuration_bart import BartConfig
 
 from arguments import add_train_args, add_predict_args, add_wandb_args
-from model import BartSummaryModelV2
+from model import BartSummaryModelV2, BartSummaryModelV3
 from inference import predict
 from utils import set_all_seeds, collate_fn, freeze, unfreeze_all, np_sigmoid
 from dataset import SummaryDataset
@@ -162,7 +162,7 @@ def main(args):
     MODEL_NAME = "gogamza/kobart-summarization"
     config = BartConfig.from_pretrained(MODEL_NAME)
     tokenizer = BartTokenizerFast.from_pretrained(MODEL_NAME)
-    model = BartSummaryModelV2.from_pretrained(MODEL_NAME)
+    model = BartSummaryModelV3.from_pretrained(MODEL_NAME)
 
     # load dataset, dataloader
     train_path = "/opt/ml/dataset/Training/train.parquet"

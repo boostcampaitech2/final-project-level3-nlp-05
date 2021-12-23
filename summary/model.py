@@ -257,3 +257,42 @@ class BartSummaryModelV2(BartForConditionalGeneration):
             encoder_hidden_states=outputs.encoder_hidden_states,
             encoder_attentions=outputs.encoder_attentions,
         )
+
+
+class BartSummaryModelV3(BartForConditionalGeneration):
+    def __init__(self, config: BartConfig, **kwargs):
+        super(BartSummaryModelV3, self).__init__(config, **kwargs)
+        self.classification_head = LSTMClassificationHead(
+            input_dim=config.d_model,
+            inner_dim=config.d_model,
+            num_classes=1, # num_classes should be 1
+            pooler_dropout=config.classifier_dropout,
+        )
+        self.model._init_weights(self.classification_head.dense)
+        self.model._init_weights(self.classification_head.out_proj)
+
+
+class LSTMClassificationHead(nn.Module):
+    def __init__(self, input_dim, inner_dim, num_classes, pooler_dropout, num_layers=1, bidirectional=False):
+        super().__init__()
+        self.inner_dim = 2*inner_dim if bidirectional else inner_dim
+
+        self.lstm = nn.LSTM(
+                        input_size=input_dim,
+                        hidden_size=inner_dim,
+                        num_layers=num_layers,
+                        batch_first=True,
+                        bidirectional=False,
+                    )
+        self.dense = nn.Linear(self.inner_dim, self.inner_dim)
+        self.dropout = nn.Dropout(p=pooler_dropout)
+        self.out_proj = nn.Linear(self.inner_dim, num_classes)
+
+    def forward(self, hidden_states: torch.Tensor):
+        hidden_states = self.dropout(hidden_states)
+        out, _ = self.lstm(hidden_states)
+        out = self.dense(out)
+        out = torch.tanh(out)
+        out = self.dropout(out)
+        out = self.out_proj(out)
+        return out
