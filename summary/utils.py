@@ -22,17 +22,6 @@ def set_all_seeds(seed, verbose=False):
     if verbose:
         print("All random seeds set to", seed)
 
-
-def str2bool(v): 
-    if isinstance(v, bool): 
-        return v 
-    if v.lower() in ('yes', 'true', 't', 'y', '1'): 
-        return True 
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'): 
-        return False 
-    else: 
-        raise ArgumentTypeError('Boolean value expected.')
-
 def collate_fn(
     batched_samples: List[Dict[str, List[int]]],
     pad_token_idx: int,
@@ -61,6 +50,15 @@ def collate_fn(
             outputs[key] = torch.nn.utils.rnn.pad_sequence(outputs[key], padding_value=PAD, batch_first=True)
 
     return dict(outputs)
+
+def combine_sentences(self, paragraphs) -> List[str]:
+    result = []
+    for paragraph in paragraphs:
+        if len(paragraph) < 1: 
+            # no sentence in paragraph
+            continue
+        result.extend([sentence["sentence"] for sentence in paragraph])
+    return result
 
 def freeze(
     model: nn.Module,
@@ -103,10 +101,8 @@ def unfreeze_all(model: nn.Module) -> NoReturn:
 def cal_rouge():
     pass
 
-
 def np_sigmoid(x: np.ndarray):
     return 1/(1+np.exp(-x))
-
 
 class PrintInfo:
     
