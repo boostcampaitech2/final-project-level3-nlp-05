@@ -51,7 +51,7 @@ def collate_fn(
 
     return dict(outputs)
 
-def combine_sentences(self, paragraphs) -> List[str]:
+def combine_sentences(paragraphs) -> List[str]:
     result = []
     for paragraph in paragraphs:
         if len(paragraph) < 1: 

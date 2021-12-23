@@ -6,7 +6,6 @@ import argparse
 import numpy as np
 
 import torch
-from torch.cuda import is_available
 import torch.nn as nn
 import torch.optim as optim
 

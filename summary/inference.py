@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader
 from transformers import BartTokenizerFast, BartConfig
 
 from model import BartSummaryModelV2
-from dataset import SummaryDataset, TestDataset
-from utils import collate_fn, str2bool
+from dataset import SummaryDataset
+from utils import collate_fn
 
 from tqdm import tqdm
 import glob

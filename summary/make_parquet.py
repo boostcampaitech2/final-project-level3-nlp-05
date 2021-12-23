@@ -21,11 +21,6 @@ def extract_train_set(
     with open(to_path, "w") as f:  # 새로 저장
         json.dump(data, f, indent=4, ensure_ascii=False)  # 한글이라 ensure_ascii=False
 
-def preprocess(df: pd.DataFrame):
-    df = df[['id', 'char_count', 'title', 'text', 'extractive', 'abstractive']]
-    df["text"] = df["text"].apply(combine_sentences)
-    return df
-
 def to_parquet(df: pd.DataFrame, save_path: str="train.parquet"):
     table = pa.Table.from_pandas(df)
     pq.write_table(table, save_path)  # preserve_index=False (omit index)
@@ -34,7 +29,8 @@ def to_parquet(df: pd.DataFrame, save_path: str="train.parquet"):
 def main(args):
     extract_train_set(args.original_path, args.json_save_path)
     news_df = pd.read_json(args.json_save_path)
-    preprocess(news_df)
+    news_df = news_df[['id', 'char_count', 'title', 'text', 'extractive', 'abstractive']]
+    news_df["text"] = news_df["text"].apply(combine_sentences)
     to_parquet(news_df, args.parquet_save_path)
 
 if __name__ == '__main__':
