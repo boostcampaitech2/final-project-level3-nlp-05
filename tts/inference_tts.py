@@ -1,7 +1,7 @@
 import soundfile as sf
 import numpy as np
 import pandas as pd
-import json
+import re
 import os
 import timeit
 import shutil
@@ -17,6 +17,7 @@ from tqdm import tqdm
 #audio segment
 from pydub import AudioSegment
 from change_honorific import honorific_token_check, change_text
+from transliterator import transliterate_text
 
 import argparse
 
@@ -38,7 +39,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Args for TTS Generation")
     parser.add_argument('--text2mel', 
         choices = ['tacotron2', 'fastspeech2'],
-        default = 'tacotron2',
+        default = 'fastspeech2',
         type=str,
         help="text2mel model")
 
@@ -58,7 +59,7 @@ def get_args():
         help="short pause between comments")
 
     parser.add_argument('--split_length', 
-        default = '300',
+        default = '150',
         type=int,
         help="split_length")
     
@@ -83,7 +84,7 @@ def generate_conjunction(text2mel_model, text2mel_processor, mel2wav_model, samp
 
     for category,lines in zip(dict_categories.keys(), lines):
         input_ids = text2mel_processor.text_to_sequence(lines)
-        if text2mel_model == 'fastspeech2':
+        if 'fast_speech2' in text2mel_model.name:
             _, mel_output, _, _, _ = text2mel_model.inference(
                 input_ids=tf.expand_dims(tf.convert_to_tensor(input_ids, dtype=tf.int32), 0),
                 speaker_ids=tf.convert_to_tensor([1], dtype=tf.int32),
@@ -91,7 +92,7 @@ def generate_conjunction(text2mel_model, text2mel_processor, mel2wav_model, samp
                 f0_ratios =tf.convert_to_tensor([1.0], dtype=tf.float32),
                 energy_ratios =tf.convert_to_tensor([1.0], dtype=tf.float32),
             )
-        else: 
+        else:
             _, mel_output,_,_ = text2mel_model.inference(
             input_ids=tf.expand_dims(tf.convert_to_tensor(input_ids, dtype=tf.int32), 0),
             input_lengths=tf.convert_to_tensor([len(input_ids)], tf.int32),
@@ -114,7 +115,7 @@ def opening_statement(date, category = False):
 def audio_drop(summary, date, id, text2mel_model, text2mel_processor, mel2wav_model, sample_rate, split=False, category = False):
     """ audio drop using text2mel & mel2wav """
     input_ids = text2mel_processor.text_to_sequence(summary)
-    if text2mel_model == 'fastspeech2':
+    if 'fast_speech2' in text2mel_model.name:
         _, mel_output, _, _, _ = text2mel_model.inference(
             input_ids=tf.expand_dims(tf.convert_to_tensor(input_ids, dtype=tf.int32), 0),
             speaker_ids=tf.convert_to_tensor([1], dtype=tf.int32),
@@ -165,6 +166,7 @@ def main():
 
     # load json args.date for the name
     data = pd.read_json(f"./data/{args.date}/summary_{args.date}.json")
+    # data = pd.read_json(f"./tts/summary_{args.date}.json")
 
     order = [1,2,3]*8
     data['new_id'] = ''
@@ -174,7 +176,12 @@ def main():
         text_split = row['summary'].split()
         if honorific_token_check(text_split[-1]): # check if honorific
             text_split[-1] = change_text(text_split[-1])
-        row['summary'] = " ".join(text_split)
+        summary = " ".join(text_split)
+        # delete contexts within ()
+        summary = re.sub(r'\([^)]*\)', '', summary).strip()
+        # transliterate numbers
+        row['summary'] = transliterate_text(summary)
+
         row['new_id'] = list(dict_categories.keys())[int(row['id'].split('-')[0]) - 1] + '_' + str(order[i])
     # check dir
     if not os.path.isdir(f"./data/{args.date}/tts/voice_files/"):
@@ -183,15 +190,20 @@ def main():
     # split summary text if larger than split_length
     for idx, summary in tqdm(enumerate(data['summary'])):
         if len(summary) > args.split_length :
-            for i in range((len(summary)//args.split_length)+1):
-                if args.split_length*(i+1) < len(summary):
-                    summary_split = summary[args.split_length*i:args.split_length*(i+1)]
-                else :
-                    summary_split = summary[args.split_length*i:]
+            ### 여기부터
+            splits = summary.split()
+            leng = len(splits) 
+            # 3 splits necessary for max string length of 450
+            for i in range(3): ## 0,1 220   split length 1/3 
+                if i < 2:
+                    summary_split = ' '.join(splits[leng//3*i:leng//3*(i+1)]) + ' '
+                 # 100개  1/3
+                else:
+                    summary_split = ' '.join(splits[leng//3*i:]) + ' '
                 audio_drop(
                     summary = summary_split, 
                     date = args.date, 
-                    id = data['new_id'][idx]+f"-{i}",  # politics_1
+                    id = data['new_id'][idx]+f"-{i}", 
                     text2mel_model = text2mel_model, 
                     text2mel_processor = text2mel_processor, 
                     mel2wav_model = mb_melgan, 
@@ -199,8 +211,9 @@ def main():
                     split = True
                 )
             split_sounds = []
-            path = sorted(os.listdir(f"./data/{args.date}/tts/voice_files/temp"))
-            split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/temp',path), format="wav"))
+            paths = sorted(os.listdir(f"./data/{args.date}/tts/voice_files/temp"))
+            for path in paths:
+                split_sounds.append(AudioSegment.from_file(os.path.join(f'./data/{args.date}/tts/voice_files/temp',path), format="wav"))
             split_overlay = sum(split_sounds)
             split_overlay.export(f"./data/{args.date}/tts/voice_files/{data['new_id'][idx]}.wav", format="wav")
             shutil.rmtree(f"./data/{args.date}/tts/voice_files/temp")
@@ -254,11 +267,13 @@ def main():
     audio_drop(opening, args.date, 'opening_',text2mel_model, text2mel_processor, mb_melgan, args.sample_rate, category = True)
 
     ordered_list = []
-    file_list = os.listdir(f"./data/{args.date}/tts/category/") + os.listdir(f'./data/conjunction')
+    file_list = [path for path in os.listdir(f"./data/{args.date}/tts/category/") if path.split('_')[0] != 'opening'] + os.listdir(f'./data/conjunction')
     for category in dict_categories.keys(): 
         for audio in sorted(file_list, reverse = True): # politics_0.mp3, politics.mp3 order
             if category in audio:
                 ordered_list.append(audio)
+
+    # print(ordered_list)
 
     # concat split audios
     split_sounds = []
