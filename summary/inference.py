@@ -1,7 +1,6 @@
 import os
 import json
 import argparse
-from datetime import date, timedelta
 from typing import Optional, List
 
 import pandas as pd
@@ -11,9 +10,10 @@ from torch.utils.data import DataLoader
 
 from transformers import BartTokenizerFast, BartConfig
 
+from arguments import add_inference_args, add_predict_args
 from model import BartSummaryModelV2
-from dataset import SummaryDataset, TestDataset
-from utils import collate_fn, str2bool
+from dataset import SummaryDataset
+from utils import collate_fn
 
 from tqdm import tqdm
 import glob
@@ -228,24 +228,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('--model_dir', type=str, default="./saved")
-    parser.add_argument('--tokenizer', type=str, default="gogamza/kobart-summarization")
-    parser.add_argument('--data_dir', type=str, default="/opt/ml/dataset/Test")
-    parser.add_argument('--date', type=str, default=(date.today() - timedelta(1)).strftime("%Y%m%d")) # 어제날짜
-    parser.add_argument('--overwrite', action='store_true')
-
-    parser.add_argument("--per_device_eval_batch_size", default=8, type=int, help="inference batch size per device (default: 8)")
-
-    parser.add_argument('--generate_method', type=str, default="beam", choices=["greedy", "beam", "sampling"])
-    parser.add_argument('--num_beams', type=int, default=8)
-    parser.add_argument('--max_length', type=int, default=128)
-    parser.add_argument('--min_length', type=int, default=4)
-    parser.add_argument('--repetition_penalty', type=float, default=1.2)
-    parser.add_argument('--no_repeat_ngram_size', type=int, default=3)
-
-    parser.add_argument("--no_cuda", action='store_true', help="run on cpu if True")
-
-    parser.add_argument("--top_k", type=int, default = 3)
+    parser = add_inference_args(parser)
+    parser = add_predict_args(parser)
 
     args = parser.parse_args()
 
