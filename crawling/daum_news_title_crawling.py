@@ -9,6 +9,7 @@ from pyvirtualdisplay import Display
 import re
 import time
 import warnings
+from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
@@ -26,8 +27,9 @@ class CrawlingDaumNewsTitle:
         'IT':'digital'
         }
     
-    def __init__(self):
+    def __init__(self, root_dir):
         self.driver = self._get_driver()
+        self.root_dir = root_dir
         
     def _get_driver(self):
         os_type = "Mac" if platform.system() == "Darwin" else "Linux"
@@ -51,7 +53,7 @@ class CrawlingDaumNewsTitle:
     def get_daum_news_title(self, date, category):
         json_result = {"date": date, "category": category}
 
-        save_dir = f"./data/{date}"
+        save_dir = os.path.join(self.root_dir, f"data/{date}")
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
 
@@ -111,15 +113,24 @@ def get_args():
         help="categories of news",
         choices=["all", "society", "politics", "economic", "foreign", "culture", "entertain", "sports", "digital"]
     )
+    parser.add_argument(
+        "--root_dir",
+        default="",
+        type=str,
+        help="root directory for airflow"
+    )
     args = parser.parse_args()
     return args
 
 def main():
     args = get_args()
     date = args.date
-    crawling_obj = CrawlingDaumNewsTitle()
+    root_dir = args.root_dir if args.root_dir else Path.cwd()
+    crawling_obj = CrawlingDaumNewsTitle(root_dir=root_dir)
 
     start = time.perf_counter()
+
+    print(f'crawling news on {date}')
 
     if "all" in args.categories:
         for category in crawling_obj.categories:

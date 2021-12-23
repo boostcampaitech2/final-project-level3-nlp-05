@@ -8,6 +8,7 @@ from pyvirtualdisplay import Display
 from tqdm import tqdm
 import platform
 import warnings
+from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
@@ -23,9 +24,10 @@ class CrawlingDaumNews:
         'IT':'digital'
         }
     
-    def __init__(self):
+    def __init__(self, root_dir):
         self.driver = self._get_driver()
         self.error_urls = []
+        self.root_dir = root_dir
         
     def _get_driver(self):
         os_type = "Mac" if platform.system() == "Darwin" else "Linux"
@@ -47,7 +49,7 @@ class CrawlingDaumNews:
         return driver
 
     def generate_article_json(self, date, category, start_page, page_count):
-        save_dir = f"./data/{date}"
+        save_dir = os.path.join(self.root_dir, f"data/{date}")
         file_name = f"daum_articles_{date}_{category}_{start_page:03d}.json"
         if os.path.isfile(os.path.join(save_dir, file_name)):
             print(f'{file_name} is already generated.')
@@ -74,7 +76,7 @@ class CrawlingDaumNews:
                     print(error_url)
 
     def _get_title_data(self, date, category):
-        with open(f"./data/{date}/daum_titles_{date}_{category}.json", "r", encoding="utf-8") as f:
+        with open(os.path.join(self.root_dir, f"data/{date}/daum_titles_{date}_{category}.json"), "r", encoding="utf-8") as f:
             title_data = json.load(f)
         return title_data
 
@@ -155,12 +157,19 @@ def get_args():
         type=int,
         help="page count",
     )
+    parser.add_argument(
+        "--root_dir",
+        default="",
+        type=str,
+        help="home directory for airflow"
+    )
     args = parser.parse_args()
     return args
 
 def main():
     args = get_args()
-    crawling_obj = CrawlingDaumNews()
+    root_dir = args.root_dir if args.root_dir else Path.cwd()
+    crawling_obj = CrawlingDaumNews(root_dir=root_dir)
     
     date = args.date
     category = {v:k for k, v in crawling_obj.categories.items()}[args.category]

@@ -3,6 +3,8 @@ import multiprocessing
 import subprocess
 import time
 from datetime import date, timedelta
+import os
+from pathlib import Path
 
 def worker(cmd):
     subprocess.run(cmd, shell=True)
@@ -33,7 +35,13 @@ def get_args():
         default=1000,
         type=int,
         help="page count",
-    )    
+    )
+    parser.add_argument(
+        "--root_dir",
+        default="",
+        type=str,
+        help="home directory for airflow"
+    )
     args = parser.parse_args()
     return args    
 
@@ -44,10 +52,12 @@ if __name__ == "__main__":
 
     print()
     print(f"Processing {args.category}")
+
+    root_dir = args.root_dir if args.root_dir else Path.cwd()
     
     processes = []
     for i in range(1, args.max_page+1, args.page_count):
-        cmd = f"python ./crawling/daum_news_crawling.py --date {args.date} --category {args.category} --start_page {i} --page_count {args.page_count}"
+        cmd = f"python {os.path.join(root_dir, 'crawling/daum_news_crawling.py')} --date {args.date} --category {args.category} --start_page {i} --page_count {args.page_count} --root_dir {root_dir}"
         p = multiprocessing.Process(target=worker, args=(cmd,))
         p.start()
         processes.append(p)

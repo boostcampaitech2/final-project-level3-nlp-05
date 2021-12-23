@@ -31,5 +31,5 @@ done
 # # 3. summarization
 echo ""
 echo "summary..."
-python ./summary/inference.py --data_dir ./data --date $date --repetition_penalty 2.0 --model_dir ./summary/saved
+python ./summary/inference.py --data_dir ./data --date $date --repetition_penalty 2.0 --model_dir ./saved
 
