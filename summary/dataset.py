@@ -82,7 +82,7 @@ class SummaryDataset(Dataset):
             target_ids = [-1]
 
         # truncation
-        if self.train or ((len(input_ids) > self.max_seq_len) and self.truncate):
+        if self.is_train or ((len(input_ids) > self.max_seq_len) and self.truncate):
             input_ids = input_ids[:self.max_seq_len-1] + [self.tokenizer.eos_token_id]
             attention_mask = [1.] * self.max_seq_len
             num_eos = input_ids.count(self.tokenizer.eos_token_id)
