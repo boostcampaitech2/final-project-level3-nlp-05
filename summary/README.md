@@ -1,63 +1,22 @@
-# Train
+# Make pyarrow dataset
+
+```sh
+python make_parquet.py
 ```
-python summary/train.py --do_train --do_eval --do_predict --use_wandb --per_device_train_batch_size 4 --per_device_eval_batch_size 8 --num_train_epochs 20 --eval_steps 16384 --gradient_accumulation_steps 128 --seed 42 --learning_rate 1e-5 --weight_decay 0.01 --repetition_penalty 2.0 --no_repeat_ngram_size 3
+
+
+
+# Train
+```sh
+python train.py --do_train --do_eval --do_predict --use_wandb --per_device_train_batch_size 4 --per_device_eval_batch_size 8 --num_train_epochs 20 --eval_steps 16384 --gradient_accumulation_steps 128 --seed 42 --learning_rate 1e-5 --weight_decay 0.01 --repetition_penalty 2.0 --no_repeat_ngram_size 3
 ```
 
 
 # Inference
-```
+```sh
 python inference.py --model_dir ./saved --date 20211217
 ```
 
-# 우수 사례
+# Demo
 
-"id": "8-0375-20211217",
-"title": "네이버 동반성장지수 평가 최우수기업상 5년 연속 수상",
-"category": "IT",
-"summary": "네이버는 17일 온오프라인에서 진행된 임금격차해소 협약 및 동반성장 대상 시상식에서 자사와 거래하는 파트너가 사업을 안정적으로 지속할 수 있도록 노력한 점 중소상공인SME의 성장을 지원해온 점 코로나19와 관련 자체 기술력을 바탕으로 지역사회의 안정을 위해 노력한 점을 인정받아 5년 연속 최우수기업상을 수상했다."
-
-"text": 
-[
-    [
-        {
-            "index": 0,
-            "sentence": "아이뉴스24 장가람 기자네이버가 동반성장위원회 주관 임금격차해소 협약 및 동반성장 대상 시상식에서 최우수기업상을 수상했다."
-        }
-    ],
-    [
-        {
-            "index": 1,
-            "sentence": "네이버는 전일 온오프라인에서 동시에 진행된 임금격차해소 협약 및 동반성장 대상 시상식에서 동반성장지수 평가 최우수기업상 5년 연속 수상했다고 17일 발표했다."
-        },
-        {
-            "index": 2,
-            "sentence": "이는 네이버가 지난 9월 발표된 2020년 동반성장지수 평가에서 최우수 등급을 획득함에 따른 것이다."
-        },
-        {
-            "index": 3,
-            "sentence": "네이버는 인터넷 플랫폼 업계 최초로 5년 연속 최우수 등급을 획득했다."
-        }
-    ],
-    [
-        {
-            "index": 4,
-            "sentence": "동반성장지수는 공정거래위원회의 공정거래협약 이행평가와 동반성장위원회의 동반성장 종합평가를 바탕으로 국내 기업의 상생노력 및 동반성장 수준을 평가해 수치화한 지수다."
-        },
-        {
-            "index": 5,
-            "sentence": "올해는 총 210개 기업이 평가대상에 포함됐다."
-        }
-    ],
-    [
-        {
-            "index": 6,
-            "sentence": "2020년 동반성장지수 평가에서 네이버는 자사와 거래하는 파트너가 사업을 안정적으로 지속할 수 있도록 노력한 점 중소상공인SME의 성장을 지원해온 점 코로나19와 관련 자체 기술력을 바탕으로 지역사회의 안정을 위해 노력한 점 등을 공로로 인정받았다."
-        }
-    ],
-    [
-        {
-            "index": 7,
-            "sentence": "임동아 네이버 동반성장 담당 책임리더는 네이버가 이행해 온 동반성장과 자발적 상생의 노력들이 또 한번 인정받고 최우수기업상을 수상하게 되어 매우 기쁘게 생각한다면서 네이버는 앞으로도 기업과 다양한 파트너 SME가 모두 함께 성장하는 긍정적인 상생문화를 발전시켜 가도록 최선을 다할 것이라고 말했다."
-        }
-    ]
-]
+Please refer to `demo/demo.ipynb`.
