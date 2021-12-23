@@ -7,6 +7,7 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from utils import combine_sentences
 
 def extract_train_set(
     from_path: str = "train_original.json", 
@@ -20,18 +21,9 @@ def extract_train_set(
     with open(to_path, "w") as f:  # 새로 저장
         json.dump(data, f, indent=4, ensure_ascii=False)  # 한글이라 ensure_ascii=False
 
-def _to_list_str(self, paragraphs) -> List[str]:
-    result = []
-    for paragraph in paragraphs:
-        if len(paragraph) < 1: 
-            # no sentence in paragraph
-            continue
-        result.extend([sentence["sentence"] for sentence in paragraph])
-    return result
-
 def preprocess(df: pd.DataFrame):
     df = df[['id', 'char_count', 'title', 'text', 'extractive', 'abstractive']]
-    df["text"] = df["text"].apply(lambda x: _to_list_str(x))
+    df["text"] = df["text"].apply(combine_sentences)
     return df
 
 def to_parquet(df: pd.DataFrame, save_path: str="train.parquet"):
