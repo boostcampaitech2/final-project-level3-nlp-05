@@ -3,7 +3,7 @@
 ## Install
 
 ```bash
-pip install -r requirements.txt
+sh ./requirements.sh
 ```
 
 <br>

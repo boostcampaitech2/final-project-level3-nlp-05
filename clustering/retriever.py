@@ -1,11 +1,11 @@
 import json
 import argparse
-import re
 import string
 import timeit
 
 import os
 from glob import glob
+from numpy.core.fromnumeric import shape
 
 import pandas as pd
 import numpy as np
@@ -34,9 +34,9 @@ dict_categories = {
         "entertain":"연예", 
         "sports":"스포츠",
         "digital":"IT"
-    }
-exclude = '☆☏<]~$』^▲;"?=\'!@☎☞�:◎▷‘‥◀/◇】*,▶🎧_+>}’`%↑【#\\◈『△-·◆[”.…■{|&★“'
-parser = argparse.ArgumentParser()
+    }   
+
+parser = argparse.ArgumentParser() 
 
 def get_args():
     """ retrieve arguments for clustering """
@@ -71,28 +71,43 @@ def get_args():
         type=int,
         help="Number of news articles to display per cluster"
     )
+    parser.add_argument(
+        "--grid_numbers",
+        default=20,
+        type=int,
+        help="Size of grid search increments"
+    )
     args = parser.parse_args()
     return args
-
 
 def filter_sentence_articles(df):
     """ filter articles by string & sentence length """
     drop_index_list = [] 
     for i in range(len(df['article'])):
-        if len(df['article'][i]) < 300 or df['article'][i].count('다.') < 3:
+        if len(df['article'][i]) < 300 or df['article'][i].count('다.') < 3: # 문장이 7이상으로 수정
             drop_index_list.append(i)         
     df = df.drop(drop_index_list)
     df.index = range(len(df)) 
     return df
 
-def preprocess(sent, exclude):
+def preprocess(sent):
     """ preprocessing before vectorizing """
-    total =''
-    email = '([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)'
-    sent = re.sub(email, '', sent)
-    for chr in sent:
-        if chr not in exclude or chr == '.': total += chr
-    return total
+    #《》 【 】［］「」 ｢｣  ≪≫〈〉 -> () 
+    punct_mapping = {'〜':'~',"‘": "'", "´": "'", "°": "", "™": "tm", "√": " 제곱근 ", "×": "x", "m²": "제곱미터",
+                    "—": "-", "–": "-", "’": "'", "_": "-", "`": "'", '“': '"', '”': '"', '“': '"', '∞': 'infinity',
+                    'θ': 'theta', '÷': '/', 'α': 'alpha', '•': '.', 'à': 'a', '−': '-', 'β': 'beta', '∅': '',
+                     '³': '3', 'π': 'pi','·':',','%':'퍼센트'}
+    parantheses = '《【{［[「｢≪〈〉》】］]}」｣≫'
+    for p in punct_mapping:
+        sent = sent.replace(p, punct_mapping[p])
+    for p in parantheses:
+        if p in parantheses[:len(parantheses)//2+1]: sent = sent.replace(p, '(')
+        else: sent = sent.replace(p, ')')
+
+    exclude = '☆☏$^▲;\"?\'!@☎☞�:◎▷‥◀/◇*▶▼🎧_+`%↑#\\◈※△-·◆…■|&★'
+    for p in exclude:
+        sent = sent.replace(p, '')
+    return sent
 
 
 def json_to_df(json_path, idx, date, category):
@@ -125,7 +140,7 @@ def json_to_df(json_path, idx, date, category):
         # origin_title, title
         title = row["title"]
         data["origin_title"].append(title)
-        new_title = preprocess(title, exclude).strip()
+        new_title = preprocess(title)
         data["title"].append(new_title)
         
         # origin_text, text, article, concat
@@ -137,7 +152,7 @@ def json_to_df(json_path, idx, date, category):
             paragraph = []
             for j in range(len(text[i])):
                 sentence = text[i][j]["sentence"]
-                new_sentence = preprocess(sentence, exclude).strip()
+                new_sentence = preprocess(sentence)
                 new_obj = {"index": text[i][j]["index"], "sentence": new_sentence}
                 paragraph.append(new_obj)
                 article.append(new_sentence)
@@ -151,7 +166,7 @@ def json_to_df(json_path, idx, date, category):
     return res_df, idx
 
 
-def retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.1, grid_upper = 0.8):
+def retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.2, grid_upper = 0.7, penalty_rate = 0.1):
     """ retrieve DBSCAN model with optimal epsilon value by grid search """
     eps_grid = np.linspace(grid_lower, grid_upper, num = grid_numbers)
     eps_best = eps_grid[0]
@@ -172,7 +187,8 @@ def retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.1, grid_u
         percentage_discarded = unlabeled_counts/len(df)
 
         # scoring guideline -> (percentage undiscarded + silhouette score)
-        overall_score = (1 - percentage_discarded) + (silhouette_score)
+        overall_score =  silhouette_score - penalty_rate*percentage_discarded 
+        # 50% 데이터 버리면 0.5*0.05 = 0.025 정도의 페널티 -> 20% 
 
         if overall_score > overall_score_max:
             silhouette_score_optimal = silhouette_score
@@ -180,10 +196,10 @@ def retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.1, grid_u
             overall_score_max = overall_score
             eps_best = eps
             model_best = model
-    
-
-    print(f'"Epsilon:", {eps_best}, Silhouette score:", {silhouette_score_optimal:.2f}, Proportion of News Discarded {percentage_discarded_optimal:.2f}')
+        # print(f'eps: {eps:.2f}, overall_score: {overall_score:.2f}, silhouette_score: {silhouette_score:.2f}, percentage_discarded: , {percentage_discarded:.2f}')
+    print(f'"Epsilon:", {eps_best:.2f}, Silhouette score:", {silhouette_score_optimal:.2f}, Proportion of News Discarded {percentage_discarded_optimal:.2f}')
     return model_best
+
 
 def print_clustered_data(df, result, print_titles = True):
     """ print cluster details of news discarded """
@@ -211,19 +227,24 @@ def retrieve_featured_article(df, centers, dict):
     feature_title = []
     feature_article = []
     feature_id = []
-    for i in range(1,len(centers)-1):
-        min_idx,min =  0,1
+
+    for i in range(1, len(centers)-1):
         temp = dict[i][0].to_dict()
+        dist = []
 
         for idx, vector in temp.items():
-            dist = spatial.distance.cosine(centers[i+1],vector)
-            if  dist < min:
-                min_idx = idx
-                min = dist
-        feature_vector_idx.append(min_idx)
-        feature_title.append(df['title'][min_idx])
-        feature_article.append(df['article'][min_idx])
-        feature_id.append(df['id'][min_idx])
+            dist.append([idx, spatial.distance.cosine(centers[i+1],vector)])
+            
+        for order,(idx,_) in enumerate(sorted(dist, key = lambda t: -t[1])):
+            if df['article'][idx].count('다.') >= 7:
+                break
+            elif order == len(dist) - 1: 
+                idx = 0   
+        feature_vector_idx.append(idx)
+        feature_title.append(df['title'][idx])
+        feature_article.append(df['article'][idx])
+        feature_id.append(df['id'][idx])
+
     return feature_vector_idx, feature_title, feature_article, feature_id
 
 
@@ -239,7 +260,7 @@ def get_cluster_details_dbscan(centers, feature_names, feature_title, feature_ar
     cluster_details = {}
     
     #개별 군집별로 iteration하면서 핵심단어, 그 단어의 중심 위치 상대값, 대상 제목 입력
-    for cluster_num in range(1,len(centers)-1): # -1, 0 제외
+    for cluster_num in range(1, len(centers)-1): # -1, 0 제외
         # 개별 군집별 정보를 담을 데이터 초기화. 
         cluster_details[cluster_num] = {}
         cluster_details[cluster_num]['cluster'] = cluster_num
@@ -264,7 +285,7 @@ def print_cluster_details(cluster_details):
         print('Article :',cluster_details[cluster_num]['article'])
         print('='*50)
 
-def generate_json(df, day, category, cluster_details, retrive_topk_clusters):
+def generate_json(df, day, category, summary_category, cluster_details, retrive_topk_clusters):
     """ generate json files into desired summarization & service input format """
     result_serving = []
     result_summary = []
@@ -292,7 +313,7 @@ def generate_json(df, day, category, cluster_details, retrive_topk_clusters):
         
     with open(f'./data/{day}/cluster_for_serving_{day}_{category}.json', 'w') as f:
         json.dump(result_serving, f, ensure_ascii=False)
-    with open(f'./data/{day}/cluster_for_summary_{day}_{category}.json', 'w') as f:
+    with open(f'./data/{day}/cluster_for_summary_{day}_{summary_category}.json', 'w') as f:
         json.dump(result_summary, f, ensure_ascii=False)
 
 
@@ -341,11 +362,11 @@ def main():
     # DBSCAN
     vector = normalize(np.array(vector))
 
-    # retrieve DBSCAN w/ optimal eps 
+    # retrieve DBSCAN w/ optimal eps
     if len(df) < 200:
         model = DBSCAN(eps=0.5, min_samples=3, metric = "cosine") # Cosine Distance
     else:
-        model = retrieve_optimal_eps(df, vector, grid_numbers = 10, grid_lower = 0.3, grid_upper = 0.8)
+        model = retrieve_optimal_eps(df, vector, grid_numbers = args.grid_numbers, grid_lower = 0.3, grid_upper = 0.7)
     result = model.fit_predict(vector)
     df['cluster'] = result
 
@@ -367,7 +388,7 @@ def main():
     # fetches corresponding vocabs from TFIDF Vectorizer
     feature_names = tfidf_vectorizer.get_feature_names_out()
     
-    cluster_details = get_cluster_details_dbscan(centers, feature_names, feature_title,feature_article, feature_id, top_n_features=args.topk_keywords)
+    cluster_details = get_cluster_details_dbscan(centers, feature_names, feature_title, feature_article, feature_id, top_n_features=args.topk_keywords)
 
     print('Cluster Details...')
     print(cluster_details)
@@ -377,7 +398,7 @@ def main():
     print_cluster_details(cluster_details)
 
     topk_list= retrieve_topk_clusters(df, args.topk_cluster)
-    generate_json(df, args.date, dict_categories[args.category], cluster_details, topk_list)
+    generate_json(df, args.date, dict_categories[args.category], args.category, cluster_details, topk_list)
 
 
 if __name__ == "__main__":
