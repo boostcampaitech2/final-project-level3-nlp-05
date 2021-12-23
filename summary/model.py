@@ -259,7 +259,7 @@ class BartSummaryModelV2(BartForConditionalGeneration):
         )
 
 
-class BartSummaryModelV3(BartSummaryModelV2):
+class BartSummaryModelV3(BartForConditionalGeneration):
     def __init__(self, config: BartConfig, **kwargs):
         super(BartSummaryModelV3, self).__init__(config, **kwargs)
         self.classification_head = LSTMClassificationHead(
@@ -270,6 +270,93 @@ class BartSummaryModelV3(BartSummaryModelV2):
         )
         self.model._init_weights(self.classification_head.dense)
         self.model._init_weights(self.classification_head.out_proj)
+
+    def classify(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        decoder_input_ids=None,
+        decoder_attention_mask=None,
+        head_mask=None,
+        decoder_head_mask=None,
+        cross_attn_head_mask=None,
+        encoder_outputs=None,
+        inputs_embeds=None,
+        decoder_inputs_embeds=None,
+        labels=None,
+        use_cache=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+    ) -> SentenceClassifierOutput:
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        if labels is not None:
+            use_cache = False
+
+        if input_ids is None and inputs_embeds is not None:
+            raise NotImplementedError(
+                f"Passing input embeddings is currently not supported for {self.__class__.__name__}"
+            )
+
+        outputs = self.model(
+            input_ids,
+            attention_mask=attention_mask,
+            decoder_input_ids=decoder_input_ids,
+            decoder_attention_mask=decoder_attention_mask,
+            head_mask=head_mask,
+            decoder_head_mask=decoder_head_mask,
+            cross_attn_head_mask=cross_attn_head_mask,
+            encoder_outputs=encoder_outputs,
+            inputs_embeds=inputs_embeds,
+            decoder_inputs_embeds=decoder_inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+        
+        device = self.model.device
+        hidden_states = outputs[0]
+        all_logits = self.classification_head(hidden_states) # [B, L]
+
+        B = input_ids.size(0)
+        MAX_NUM = torch.max(input_ids.eq(self.config.eos_token_id).sum(1))
+
+        # last hidden state
+        logits = torch.zeros((B, MAX_NUM, 1)).to(device) # [B, MAX_NUM, 1]
+        for i in range(B):
+            _logit = all_logits[i][input_ids[i].eq(self.config.eos_token_id)]
+            for j in range(_logit.size(0)):
+                logits[i, j, :] = _logit[j, :]
+        logits = logits.squeeze(-1) # [B, MAX_NUM]
+        
+        loss = None
+        if labels is not None:
+            assert len(input_ids) == len(labels)
+            # Create one-hot vectors indicating target sentences
+            one_hot = torch.zeros((B, MAX_NUM)).to(device)
+            for i in range(B):
+                one_hot[i,:].index_fill_(0, labels[i][labels[i] >= 0], 1.0)
+            labels = one_hot.clone()
+
+            loss_fct = nn.BCEWithLogitsLoss()
+            loss = loss_fct(logits, labels)
+    
+        if not return_dict:
+            output = (logits,) + outputs[1:]
+            return ((loss,) + output) if loss is not None else output
+        
+        return SentenceClassifierOutput(
+            loss=loss,
+            logits=logits,
+            past_key_values=outputs.past_key_values,
+            decoder_hidden_states=outputs.decoder_hidden_states,
+            decoder_attentions=outputs.decoder_attentions,
+            cross_attentions=outputs.cross_attentions,
+            encoder_last_hidden_state=outputs.encoder_last_hidden_state,
+            encoder_hidden_states=outputs.encoder_hidden_states,
+            encoder_attentions=outputs.encoder_attentions,
+        )
 
 
 class LSTMClassificationHead(nn.Module):
