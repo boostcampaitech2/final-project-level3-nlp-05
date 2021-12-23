@@ -219,19 +219,16 @@ class BartSummaryModelV2(BartForConditionalGeneration):
         )
         
         device = self.model.device
-        hidden_states = outputs[0]
-        all_logits = self.classification_head(hidden_states) # [B, L]
-
         B = input_ids.size(0)
         MAX_NUM = torch.max(input_ids.eq(self.config.eos_token_id).sum(1))
 
-        # last hidden state
-        logits = torch.zeros((B, MAX_NUM, 1)).to(device) # [B, MAX_NUM, 1]
+        hidden_states = outputs[0]  # last hidden state
+        sentence_representation = torch.zeros((B, MAX_NUM, self.config.d_model)).to(device)
         for i in range(B):
-            _logit = all_logits[i][input_ids[i].eq(self.config.eos_token_id)]
-            for j in range(_logit.size(0)):
-                logits[i, j, :] = _logit[j, :]
-        logits = logits.squeeze(-1) # [B, MAX_NUM]
+            _hidden = hidden_states[i][input_ids[i].eq(self.config.eos_token_id)]
+            for j in range(_hidden.size(0)):
+                sentence_representation[i, j, :] = _hidden[j, :]
+        logits = self.classification_head(sentence_representation).squeeze(-1) # [B, L]
         
         loss = None
         if labels is not None:
