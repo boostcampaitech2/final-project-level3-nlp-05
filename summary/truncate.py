@@ -78,7 +78,10 @@ def batch_truncate(x: torch.Tensor, l: int, dim: int = -1, padding_value: int = 
         _a_batch.append(_a)
         _b_batch.append(_b)
     a_batch = torch.nn.utils.rnn.pad_sequence(_a_batch, batch_first=True, padding_value=padding_value)
-    b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+    if len(_b_batch) > 0:
+        b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+    else:
+        b_batch = None
     return a_batch, b_batch
 
 
@@ -106,7 +109,10 @@ def batch_truncate_with_eq(
             _b_batch.append(torch.tensor([]))
     
     a_batch = torch.nn.utils.rnn.pad_sequence(_a_batch, batch_first=True, padding_value=padding_value)
-    b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+    if len(_b_batch) > 0:
+        b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+    else:
+        b_batch = None
 
     if not return_mapping:
         return a_batch, b_batch
@@ -130,7 +136,10 @@ def batch_truncate_with_len(
         _b_batch.append(x[i, l[i]:])
 
     a_batch = torch.nn.utils.rnn.pad_sequence(_a_batch, batch_first=True, padding_value=padding_value)
-    b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+    if len(_b_batch) > 0:
+        b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+    else:
+        b_batch = None
 
     return a_batch, b_batch
 
