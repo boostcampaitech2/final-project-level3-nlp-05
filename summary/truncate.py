@@ -153,3 +153,22 @@ def gather_lengths(x: torch.Tensor, padding_value: int = 0):
         else:
             l.append(eq[0].item())
     return l
+
+
+def concat_sentences(x: torch.Tensor, y: torch.Tensor, padding_value: int = 0):
+    assert len(x) == len(y)
+
+    merged = []
+
+    for i in range(x.size(0)):
+        
+        _x = x[i]
+        _x = _x[_x != padding_value]
+
+        _y = y[i]
+        _y = _y[_y != padding_value]
+        _y = _y[1:] # excluding bos token
+
+        merged.append(torch.cat([_x, _y[1:]], dim=0))
+    
+    return torch.nn.utils.rnn.pad_sequence(merged, batch_first=True, padding_value=padding_value)
