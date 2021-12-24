@@ -162,16 +162,27 @@ def batch_truncate(x: torch.Tensor, l: int, dim: int = -1, padding_value: int = 
     return a_batch, b_batch
 
 
-def batch_truncate_with_eq(x: torch.Tensor, l: int, sep: Union[torch.Tensor, Number] = 0, dim: int = -1, padding_value: int = 0):
+def batch_truncate_with_eq(x: torch.Tensor, l: int, sep: Union[torch.Tensor, Number] = 0, dim: int = -1, padding_value: int = 0, return_mapping: bool = True):
     _a_batch = []
     _b_batch = []
+    mapping = []
+
     for i in range(x.size(0)):
         _a, _b = truncate_with_eq(x[i], l, sep, dim)
         _a_batch.append(_a)
-        _b_batch.append(_b)
+        if _b is not None:
+            _b_batch.append(_b)
+            mapping.append(i)
+        elif not return_mapping:
+            _b_batch.append(torch.tensor([]))
+    
     a_batch = torch.nn.utils.rnn.pad_sequence(_a_batch, batch_first=True, padding_value=padding_value)
     b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
-    return a_batch, b_batch
+
+    if not return_mapping:
+        return a_batch, b_batch
+    else:
+        return a_batch, b_batch, mapping
 
 
 def predict(args, model, test_dl, tokenizer) -> List[str]:
