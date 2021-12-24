@@ -131,7 +131,14 @@ def min_eq_pos(x: torch.Tensor, other: Union[torch.Tensor, Number]) -> int:
         return eq[0]
 
 
-def truncate_with_eq(x: torch.Tensor, l: int, sep: Union[torch.Tensor, Number] = 0, dim: int = -1):
+def truncate_with_eq(
+    x: torch.Tensor, 
+    l: int, 
+    sep: Union[torch.Tensor, Number] = 0, 
+    dim: int = -1, 
+    overflow: bool = False, 
+    eos_value: Optional[int] = None
+):
     """Returns a truncated tensor shorter-than-or-equal-to the length given and a remaining tensor.
     If a provided `tensor` is shorter than the `length` given, it returns the original tensor and `None`.
     """
@@ -140,13 +147,22 @@ def truncate_with_eq(x: torch.Tensor, l: int, sep: Union[torch.Tensor, Number] =
     else:
         try:
             to = max_eq_pos(x[0:l], sep) + 1
+            a_tensor = x[:to]
+            b_tensor = x[to:]
         except:
             try:
                 to = min_eq_pos(x, sep) + 1
+                if not overflow:
+                    if eos_value is not None:
+                        a_tensor = torch.cat([x[:(l-1)], torch.tensor([eos_value]).to(x.device)], dim=0)
+                    else:
+                        a_tensor = x[:l]
+                else:
+                    a_tensor = x[:to]
+                b_tensor = x[to:]
             except:
                 return x, None
-        a_tensor = x[:to]
-        b_tensor = x[to:]
+        
         return a_tensor, b_tensor
 
 
@@ -162,13 +178,22 @@ def batch_truncate(x: torch.Tensor, l: int, dim: int = -1, padding_value: int = 
     return a_batch, b_batch
 
 
-def batch_truncate_with_eq(x: torch.Tensor, l: int, sep: Union[torch.Tensor, Number] = 0, dim: int = -1, padding_value: int = 0, return_mapping: bool = True):
+def batch_truncate_with_eq(
+    x: torch.Tensor, 
+    l: int, 
+    sep: Union[torch.Tensor, Number] = 0, 
+    dim: int = -1, 
+    padding_value: int = 0, 
+    overflow: bool = False,
+    eos_value: Optional[int] = None,
+    return_mapping: bool = True,
+):
     _a_batch = []
     _b_batch = []
     mapping = []
 
     for i in range(x.size(0)):
-        _a, _b = truncate_with_eq(x[i], l, sep, dim)
+        _a, _b = truncate_with_eq(x[i], l, sep, dim, overflow, eos_value)
         _a_batch.append(_a)
         if _b is not None:
             _b_batch.append(_b)
