@@ -133,3 +133,14 @@ def batch_truncate_with_len(
     b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
 
     return a_batch, b_batch
+
+
+def gather_lengths(x: torch.Tensor, padding_value: int = 0):
+    l = []
+    for i in range(x.size(0)):
+        eq = torch.nonzero(x[i] == padding_value, as_tuple=False)
+        if len(eq) == 0:
+            l.append(int(x.size(1)))
+        else:
+            l.append(eq[0].item())
+    return l
