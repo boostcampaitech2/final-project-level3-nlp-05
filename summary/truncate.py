@@ -1,4 +1,4 @@
-from typing import Tuple, Union, Optional
+from typing import Tuple, Union, Optional, Iterable
 
 import torch
 from torch.types import Number
@@ -112,3 +112,24 @@ def batch_truncate_with_eq(
         return a_batch, b_batch
     else:
         return a_batch, b_batch, mapping
+
+
+def batch_truncate_with_len(
+    x: torch.Tensor,
+    l: Iterable[int],
+    dim: int = -1,
+    padding_value: int = 0,
+):
+    assert len(x) == len(l), "`l` must contain the same number of elements as batch_size"
+
+    _a_batch = []
+    _b_batch = []
+
+    for i in range(x.size(0)):
+        _a_batch.append(x[i, :l[i]])
+        _b_batch.append(x[i, l[i]:])
+
+    a_batch = torch.nn.utils.rnn.pad_sequence(_a_batch, batch_first=True, padding_value=padding_value)
+    b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+
+    return a_batch, b_batch
