@@ -99,36 +99,79 @@ def extract_sentences(
     }
 
 
-def truncate(tensor: torch.Tensor, length: int = 0, dim: int = -1, copy: bool = True) -> Tuple[torch.Tensor]:
+def truncate(x: torch.Tensor, l: int, dim: int = -1) -> Tuple[torch.Tensor]:
     """Returns a truncated tensor with length given and a remaining tensor.
     If a provided `tensor` is shorter than the `length` given, it returns the original tensor and `None`.
     It copies the original tensor. 
     """
-    l = tensor.size(dim)
-    if l <= length:
-        return tensor, None
+    if x.size(dim) <= l:
+        return x, None
     else:
-        a_ids = torch.arange(0, length, dtype=torch.long)
-        b_ids = torch.arange(length, l, dtype=torch.long)
-        return torch.index_select(tensor, dim, a_ids).clone(torch.contiguous_format), torch.index_select(tensor, dim, b_ids).clone(torch.contiguous_format)
+        a_tensor = x[:l]
+        b_tensor = x[l:]
+        return a_tensor, b_tensor
 
 
 def max_eq_pos(x: torch.Tensor, other: Union[torch.Tensor, Number]) -> int:
-    return torch.max(torch.arange(0, len(x))[torch.eq(x, other)]).item()
+    eq = torch.eq(x, other).nonzero()
+    if len(eq) == 0:
+        # no corresponding element in the given tensor
+        raise ValueError("`x` does not contain the corresponding element.")
+    else:
+        # if there is an element(s), then it returns the last element
+        return eq[-1]
+
+def min_eq_pos(x: torch.Tensor, other: Union[torch.Tensor, Number]) -> int:
+    eq = torch.eq(x, other).nonzero()
+    if len(eq) == 0:
+        # no corresponding element in the given tensor
+        raise ValueError("`x` does not contain the corresponding element.")
+    else:
+        # if there is an element(s), then it returns the last element
+        return eq[0]
 
 
-def truncate_with_eq(tensor: torch.Tensor, seperator: Union[torch.Tensor, Number], length: int = 0, dim: int = -1, copy: bool = True):
+def truncate_with_eq(x: torch.Tensor, l: int, sep: Union[torch.Tensor, Number] = 0, dim: int = -1):
     """Returns a truncated tensor shorter-than-or-equal-to the length given and a remaining tensor.
     If a provided `tensor` is shorter than the `length` given, it returns the original tensor and `None`.
     """
-    l = tensor.size(dim)
-    if l <= length:
-        return tensor, None
+    if x.size(dim) <= l:
+        return x, None
     else:
-        to = max_eq_pos(tensor, seperator)
-        a_ids = torch.arange(0, to, dtype=torch.long)
-        b_ids = torch.arange(to, l, dtype=torch.long)
-        return torch.index_select(tensor, dim, a_ids).clone(torch.contiguous_format), torch.index_select(tensor, dim, b_ids).clone(torch.contiguous_format)
+        try:
+            to = max_eq_pos(x[0:l], sep) + 1
+        except:
+            try:
+                to = min_eq_pos(x, sep) + 1
+            except:
+                return x, None
+        a_tensor = x[:to]
+        b_tensor = x[to:]
+        return a_tensor, b_tensor
+
+
+def batch_truncate(x: torch.Tensor, l: int, dim: int = -1, padding_value: int = 0):
+    _a_batch = []
+    _b_batch = []
+    for i in range(x.size(0)):
+        _a, _b = truncate(x[i], l, dim)
+        _a_batch.append(_a)
+        _b_batch.append(_b)
+    a_batch = torch.nn.utils.rnn.pad_sequence(_a_batch, batch_first=True, padding_value=padding_value)
+    b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+    return a_batch, b_batch
+
+
+def batch_truncate_with_eq(x: torch.Tensor, l: int, sep: Union[torch.Tensor, Number] = 0, dim: int = -1, padding_value: int = 0):
+    _a_batch = []
+    _b_batch = []
+    for i in range(x.size(0)):
+        _a, _b = truncate_with_eq(x[i], l, sep, dim)
+        _a_batch.append(_a)
+        _b_batch.append(_b)
+    a_batch = torch.nn.utils.rnn.pad_sequence(_a_batch, batch_first=True, padding_value=padding_value)
+    b_batch = torch.nn.utils.rnn.pad_sequence(_b_batch, batch_first=True, padding_value=padding_value)
+    return a_batch, b_batch
 
 
 def predict(args, model, test_dl, tokenizer) -> List[str]:
