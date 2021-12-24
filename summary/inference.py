@@ -1,12 +1,13 @@
 import os
 import json
 import argparse
-from typing import Optional, List
+from typing import Optional, List, Tuple, Union
 
 import pandas as pd
 
 import torch
 from torch.utils.data import DataLoader
+from torch.types import Number
 
 from transformers import BartTokenizerFast, BartConfig
 
@@ -96,6 +97,38 @@ def extract_sentences(
         "input_ids": gen_batch_inputs,
         "attention_mask": attention_mask,
     }
+
+
+def truncate(tensor: torch.Tensor, length: int = 0, dim: int = -1, copy: bool = True) -> Tuple[torch.Tensor]:
+    """Returns a truncated tensor with length given and a remaining tensor.
+    If a provided `tensor` is shorter than the `length` given, it returns the original tensor and `None`.
+    It copies the original tensor. 
+    """
+    l = tensor.size(dim)
+    if l <= length:
+        return tensor, None
+    else:
+        a_ids = torch.arange(0, length, dtype=torch.long)
+        b_ids = torch.arange(length, l, dtype=torch.long)
+        return torch.index_select(tensor, dim, a_ids).clone(torch.contiguous_format), torch.index_select(tensor, dim, b_ids).clone(torch.contiguous_format)
+
+
+def max_eq_pos(x: torch.Tensor, other: Union[torch.Tensor, Number]) -> int:
+    return torch.max(torch.arange(0, len(x))[torch.eq(x, other)]).item()
+
+
+def truncate_with_eq(tensor: torch.Tensor, seperator: Union[torch.Tensor, Number], length: int = 0, dim: int = -1, copy: bool = True):
+    """Returns a truncated tensor shorter-than-or-equal-to the length given and a remaining tensor.
+    If a provided `tensor` is shorter than the `length` given, it returns the original tensor and `None`.
+    """
+    l = tensor.size(dim)
+    if l <= length:
+        return tensor, None
+    else:
+        to = max_eq_pos(tensor, seperator)
+        a_ids = torch.arange(0, to, dtype=torch.long)
+        b_ids = torch.arange(to, l, dtype=torch.long)
+        return torch.index_select(tensor, dim, a_ids).clone(torch.contiguous_format), torch.index_select(tensor, dim, b_ids).clone(torch.contiguous_format)
 
 
 def predict(args, model, test_dl, tokenizer) -> List[str]:
