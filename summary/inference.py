@@ -14,7 +14,14 @@ from transformers import BartTokenizerFast, BartConfig
 from arguments import add_inference_args, add_predict_args
 from model import BartSummaryModelV2
 from dataset import SummaryDataset
-from utils import collate_fn
+from utils import collate_fn, get_eos_positions
+from truncate import (
+    batch_truncate, 
+    batch_truncate_with_eq, 
+    batch_truncate_with_len, 
+    gather_lengths,
+    concat_sentences,
+)
 
 from tqdm import tqdm
 import glob
@@ -99,6 +106,113 @@ def extract_sentences(
     }
 
 
+def simple_classification(args, model, batch, tokenizer, device):
+    input_ids = batch["input_ids"].to(device)  # (B, L_src)
+    attention_mask = batch["attention_mask"].to(device)  # (B, L_src)
+    # eos_positions = batch["eos_positions"].clone().to(device)
+
+    ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask)
+
+    # TODO: use different k values
+    # TODO: implement different criteria (such as probability)!
+    top_ext_ids = get_top_k_sentences(
+        logits=ext_out.logits.clone().detach().cpu(), 
+        eos_positions=batch["eos_positions"], 
+        k = args.top_k,
+    )
+    gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
+
+    return gen_batch
+
+
+def recursive_classification(args, model, batch, tokenizer, device):
+
+    input_ids = batch["input_ids"]
+
+    while input_ids.size(1) > 0:
+
+        _input_ids, input_ids = batch_truncate_with_eq(
+            input_ids, 
+            # model.config.max_position_embeddings - model.config.extra_pos_embeddings, 
+            512,
+            sep=tokenizer.eos_token_id, 
+            padding_value=tokenizer.pad_token_id, 
+            eos_value=tokenizer.eos_token_id, 
+            return_mapping=False,
+            overflow=False,
+        )
+
+        lengths = gather_lengths(_input_ids, tokenizer.pad_token_id)
+
+        _attention_mask = torch.nn.utils.rnn.pad_sequence(
+            [torch.tensor([1.0] * l) for l in lengths], 
+            batch_first=True, 
+            padding_value=0.0
+        )
+        # print([tokenizer.decode(g) for g in _input_ids])
+
+        _input_ids_c = _input_ids.to(device)
+        _attention_mask_c = _attention_mask.to(device)
+
+        ext_out = model.classify(
+            input_ids=_input_ids_c, 
+            attention_mask=_attention_mask_c,
+        )
+
+        _eos_positions = get_eos_positions(_input_ids, tokenizer)
+        
+        top_ext_ids = get_top_k_sentences(
+            logits=ext_out.logits.clone().detach().cpu(),
+            eos_positions=_eos_positions,
+            k=args.top_k,
+        )
+        _ext_batch = extract_sentences(_input_ids, _eos_positions, top_ext_ids, tokenizer)
+        
+        if input_ids.size(1) > 0:
+            input_ids = concat_sentences(_ext_batch["input_ids"], input_ids, tokenizer.pad_token_id)
+            continue
+        else:
+            return _ext_batch
+
+
+def generate(args, model, gen_batch, device):
+
+    summary_ids = None
+
+    if args.generate_method == "greedy":
+        summary_ids = model.generate(
+            input_ids=gen_batch["input_ids"].to(device), 
+            attention_mask=gen_batch["attention_mask"].to(device),  
+            max_length=args.max_length, 
+            min_length=args.min_length,
+            repetition_penalty=args.repetition_penalty,
+            no_repeat_ngram_size=args.no_repeat_ngram_size,
+        )
+    elif args.generate_method == "beam":
+        summary_ids = model.generate(
+            input_ids=gen_batch["input_ids"].to(device), 
+            attention_mask=gen_batch["attention_mask"].to(device), 
+            num_beams=args.num_beams, 
+            max_length=args.max_length, 
+            min_length=args.min_length,
+            repetition_penalty=args.repetition_penalty,
+            no_repeat_ngram_size=args.no_repeat_ngram_size,
+        )
+    elif args.generate_method == "sampling":
+        summary_ids = model.generate(
+            input_ids=gen_batch["input_ids"].to(device), 
+            attention_mask=gen_batch["attention_mask"].to(device), 
+            do_sample=True,
+            max_length=args.max_length, 
+            min_length=args.min_length,
+            repetition_penalty=args.repetition_penalty,
+            no_repeat_ngram_size=args.no_repeat_ngram_size,
+            top_k=50,
+            top_p=0.92,
+        )
+    return summary_ids
+
+
 def predict(args, model, test_dl, tokenizer) -> List[str]:
 
     device = torch.device("cpu") if args.no_cuda or not torch.cuda.is_available() else torch.device("cuda")
@@ -110,65 +224,33 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
     pred_ext_ids = []
 
     with torch.no_grad():
-        for batch in tqdm(test_dl):
-            input_ids = batch["input_ids"].clone().to(device)  # (B, L_src)
-            attention_mask = batch["attention_mask"].clone().to(device)  # (B, L_src)
-            # eos_positions = batch["eos_positions"].clone().to(device)
+        for idx, batch in tqdm(enumerate(test_dl)):
+            
+            gen_batch = None
+            if args.classify_method == "simple":
+                gen_batch = simple_classification(args, model, batch, tokenizer, device)
+            elif args.classify_method == "recursive":
+                gen_batch = recursive_classification(args, model, batch, tokenizer, device)
 
-            ext_out = model.classify(input_ids=input_ids, attention_mask=attention_mask)
-
-            # TODO: use different k values
-            # TODO: implement different criteria (such as probability)!
-            top_ext_ids = get_top_k_sentences(
-                logits=ext_out.logits.clone().detach().cpu(), 
-                eos_positions=batch["eos_positions"], 
-                k = args.top_k,
-            )
-            gen_batch = extract_sentences(batch["input_ids"], batch["eos_positions"], top_ext_ids, tokenizer)
-
-            summary_ids = None
-            if args.generate_method == "greedy":
-                summary_ids = model.generate(
-                    input_ids=gen_batch["input_ids"].to(device), 
-                    attention_mask=gen_batch["attention_mask"].to(device),  
-                    max_length=args.max_length, 
-                    min_length=args.min_length,
-                    repetition_penalty=args.repetition_penalty,
-                    no_repeat_ngram_size=args.no_repeat_ngram_size,
-                )
-            elif args.generate_method == "beam":
-                summary_ids = model.generate(
-                    input_ids=gen_batch["input_ids"].to(device), 
-                    attention_mask=gen_batch["attention_mask"].to(device), 
-                    num_beams=args.num_beams, 
-                    max_length=args.max_length, 
-                    min_length=args.min_length,
-                    repetition_penalty=args.repetition_penalty,
-                    no_repeat_ngram_size=args.no_repeat_ngram_size,
-                )
-            elif args.generate_method == "sampling":
-                summary_ids = model.generate(
-                    input_ids=gen_batch["input_ids"].to(device), 
-                    attention_mask=gen_batch["attention_mask"].to(device), 
-                    do_sample=True,
-                    max_length=args.max_length, 
-                    min_length=args.min_length,
-                    repetition_penalty=args.repetition_penalty,
-                    no_repeat_ngram_size=args.no_repeat_ngram_size,
-                    top_k=50,
-                    top_p=0.92,
-                )
+            summary_ids = generate(args, model, gen_batch, device)
             
             summary_sent = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
+            # print(summary_sent)
             pred_sentences.extend(summary_sent)
 
             # remove invalid ids for highlighting
-            top_ext_ids = top_ext_ids.tolist()
-            valid_ext_ids = []
-            for i in range(len(top_ext_ids)):
-                valid_ext_ids.append([id for id in top_ext_ids[i] if id >= 0])
+            # top_ext_ids = top_ext_ids.tolist()
+            # valid_ext_ids = []
+            # for i in range(len(top_ext_ids)):
+            #     valid_ext_ids.append([id for id in top_ext_ids[i] if id >= 0])
 
-            pred_ext_ids.extend(valid_ext_ids)
+            # pred_ext_ids.extend(valid_ext_ids)
+
+            if idx > 500:
+                break
+
+    with open("pred.json", "w") as f:
+        json.dump(pred_sentences, f, ensure_ascii=False, indent=4)
 
     return pred_sentences, pred_ext_ids
 
