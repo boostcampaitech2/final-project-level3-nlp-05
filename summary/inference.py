@@ -106,7 +106,7 @@ def extract_sentences(
     }
 
 
-def simple_classification(args, model, batch, tokenizer, device):
+def simple_extraction(args, model, batch, tokenizer, device):
     input_ids = batch["input_ids"].to(device)  # (B, L_src)
     attention_mask = batch["attention_mask"].to(device)  # (B, L_src)
     # eos_positions = batch["eos_positions"].clone().to(device)
@@ -125,7 +125,7 @@ def simple_classification(args, model, batch, tokenizer, device):
     return gen_batch
 
 
-def recursive_classification(args, model, batch, tokenizer, device):
+def recursive_extraction(args, model, batch, tokenizer, device):
 
     input_ids = batch["input_ids"]
 
@@ -133,8 +133,7 @@ def recursive_classification(args, model, batch, tokenizer, device):
 
         _input_ids, input_ids = batch_truncate_with_eq(
             input_ids, 
-            # model.config.max_position_embeddings - model.config.extra_pos_embeddings, 
-            512,
+            model.config.max_position_embeddings - model.config.extra_pos_embeddings, 
             sep=tokenizer.eos_token_id, 
             padding_value=tokenizer.pad_token_id, 
             eos_value=tokenizer.eos_token_id, 
@@ -149,7 +148,6 @@ def recursive_classification(args, model, batch, tokenizer, device):
             batch_first=True, 
             padding_value=0.0
         )
-        # print([tokenizer.decode(g) for g in _input_ids])
 
         _input_ids_c = _input_ids.to(device)
         _attention_mask_c = _attention_mask.to(device)
@@ -175,7 +173,7 @@ def recursive_classification(args, model, batch, tokenizer, device):
             return _ext_batch
 
 
-def generate(args, model, gen_batch, device):
+def generation(args, model, gen_batch, device):
 
     summary_ids = None
 
@@ -228,11 +226,11 @@ def predict(args, model, test_dl, tokenizer) -> List[str]:
             
             gen_batch = None
             if args.classify_method == "simple":
-                gen_batch = simple_classification(args, model, batch, tokenizer, device)
+                gen_batch = simple_extraction(args, model, batch, tokenizer, device)
             elif args.classify_method == "recursive":
-                gen_batch = recursive_classification(args, model, batch, tokenizer, device)
+                gen_batch = recursive_extraction(args, model, batch, tokenizer, device)
 
-            summary_ids = generate(args, model, gen_batch, device)
+            summary_ids = generation(args, model, gen_batch, device)
             
             summary_sent = [tokenizer.decode(g, skip_special_tokens=True, clean_up_tokenization_spaces=False) for g in summary_ids]
             # print(summary_sent)
