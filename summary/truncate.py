@@ -106,7 +106,7 @@ def batch_truncate_with_eq(
             _b_batch.append(_b)
             mapping.append(i)
         elif not return_mapping:
-            _b_batch.append(torch.tensor([]))
+            _b_batch.append(torch.tensor([], dtype=x.dtype))
     
     a_batch = torch.nn.utils.rnn.pad_sequence(_a_batch, batch_first=True, padding_value=padding_value)
     if len(_b_batch) > 0:
