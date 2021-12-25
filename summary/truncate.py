@@ -57,15 +57,21 @@ def truncate_with_eq(
             try:
                 to = min_eq_pos(x, sep) + 1
                 if not overflow:
+                    a_tensor = x[:l]
                     if eos_value is not None:
-                        a_tensor = torch.cat([x[:(l-1)], torch.tensor([eos_value]).to(x.device)], dim=0)
-                    else:
-                        a_tensor = x[:l]
+                        a_tensor[-1] = eos_value
                 else:
                     a_tensor = x[:to]
+                # TODO: should return None when b_tensor.size(0) == 0
                 b_tensor = x[to:]
             except:
-                return x, None
+                if overflow:
+                    return x, None
+                else:
+                    a_tensor = x[:l]
+                    if eos_value is not None:
+                        a_tensor[-1] = eos_value
+                    return a_tensor, None
         
         return a_tensor, b_tensor
 
@@ -167,8 +173,8 @@ def concat_sentences(x: torch.Tensor, y: torch.Tensor, padding_value: int = 0):
 
         _y = y[i]
         _y = _y[_y != padding_value]
-        _y = _y[1:] # excluding bos token
+        # _y = _y[1:] # excluding bos token
 
-        merged.append(torch.cat([_x, _y[1:]], dim=0))
+        merged.append(torch.cat([_x, _y], dim=0))
     
     return torch.nn.utils.rnn.pad_sequence(merged, batch_first=True, padding_value=padding_value)
