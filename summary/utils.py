@@ -9,6 +9,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+from transformers import BartTokenizerFast
+
 
 def set_all_seeds(seed, verbose=False):
     torch.manual_seed(seed)
@@ -59,6 +61,14 @@ def combine_sentences(paragraphs) -> List[str]:
             continue
         result.extend([sentence["sentence"] for sentence in paragraph])
     return result
+
+def get_eos_positions(x: torch.Tensor, tokenizer: BartTokenizerFast):
+    eos_positions = []
+    for i in range(x.size(0)):
+        ids = torch.eq(x[i], tokenizer.eos_token_id).nonzero().squeeze(1)
+        eos_positions.append(ids)
+    return torch.nn.utils.rnn.pad_sequence(eos_positions, batch_first=True, padding_value=-1)
+
 
 def freeze(
     model: nn.Module,
