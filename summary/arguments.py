@@ -42,11 +42,12 @@ def add_inference_args(parser: argparse.ArgumentParser) -> argparse.ArgumentPars
 
 def add_predict_args(parser: argparse.ArgumentParser) -> argparse.ArgumentParser():
 
+    parser.add_argument('--classify_method', type=str, default="recursive", choices=["simple", "recursive"])
     parser.add_argument('--generate_method', type=str, default="beam", choices=["greedy", "beam", "sampling"])
     parser.add_argument('--num_beams', type=int, default=8)
     parser.add_argument('--max_length', type=int, default=128)
-    parser.add_argument('--min_length', type=int)
-    parser.add_argument('--repetition_penalty', type=float, default=1.0)
+    parser.add_argument('--min_length', type=int, default=4)
+    parser.add_argument('--repetition_penalty', type=float, default=1.2)
     parser.add_argument('--no_repeat_ngram_size', type=int)
     parser.add_argument("--top_k", type=int, default = 3)
 
