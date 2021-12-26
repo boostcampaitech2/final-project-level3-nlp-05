@@ -102,6 +102,7 @@ def cal_rouge():
     pass
 
 def np_sigmoid(x: np.ndarray):
+    x = np.clip(x, -10, 10)
     return 1/(1+np.exp(-x))
 
 class PrintInfo:
