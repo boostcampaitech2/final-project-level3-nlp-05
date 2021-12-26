@@ -1,6 +1,6 @@
 from konlpy.tag import Komoran
 
-hon_tokens = [word.rstrip('\n') for word in open('komoran_honorific_token.txt', 'r',encoding='utf-8')]
+hon_tokens = [word.rstrip('\n') for word in open('./tts/komoran_honorific_token.txt', 'r',encoding='utf-8')]
 komoran = Komoran()
 
 kor_begin, kor_end = 44032, 55203
